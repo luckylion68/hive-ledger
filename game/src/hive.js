@@ -10,7 +10,7 @@ export function gainNectar(amount, quiet = false) {
   const gained = state.nectar - before;
   bumpStat('nectarGathered', gained);
   if (!quiet && gained > 0) {
-    addFloater(`+${gained} NECTAR`, 330, 388, SUITS.gather.color, 18);
+    addFloater(`+${gained} NECTAR`, LAYOUT.nectar.dotX + 44, 88, SUITS.gather.color, 17);
   }
   return gained;
 }
@@ -25,7 +25,7 @@ export function gainWax(amount) {
   if (amount <= 0) return 0;
   state.wax += amount;
   bumpStat('waxBuilt', amount);
-  addFloater(`+${amount} WAX`, 950, 388, SUITS.guard.color, 20);
+  addFloater(`+${amount} WAX`, LAYOUT.wax.hexX + 66, 88, SUITS.guard.color, 18);
   return amount;
 }
 
