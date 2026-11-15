@@ -20,10 +20,18 @@ import {
 import { drawHud } from './render-hud.js';
 import { drawCard, drawRewardCard } from './render-cards.js';
 import { rewardCards } from './scenes.js';
-import { floorTitle, floorName } from './floors.js';
+import { floorTitle, floorName, floorEnemies } from './floors.js';
+import { ENEMY_KINDS } from './enemies.js';
 import { CARD_W, CARD_H } from './render-cards.js';
 
 const HAND_STEP = CARD_W + LAYOUT.hand.gap;
+
+/** Five cards sit at full spacing; a bigger hand narrows the gap instead of running off the edge. */
+export function handStep(count = state.hand.length) {
+  if (count <= 5) return HAND_STEP;
+  const room = 1280 - LAYOUT.hand.startX * 2;
+  return Math.min(HAND_STEP, (room - CARD_W) / (count - 1));
+}
 
 export function enemySlotX(index, count) {
   if (count <= 1) return 640;
@@ -31,8 +39,10 @@ export function enemySlotX(index, count) {
   return LAYOUT.enemy.cx[Math.min(index, 2)];
 }
 
-export function handCardRect(index) {
-  const x = LAYOUT.hand.startX + index * HAND_STEP;
+export function handCardRect(index, count = state.hand.length) {
+  const step = handStep(count);
+  const total = CARD_W + Math.max(0, count - 1) * step;
+  const x = (1280 - total) / 2 + index * step;
   return { x, y: LAYOUT.hand.y, w: CARD_W, h: CARD_H };
 }
 
@@ -58,6 +68,18 @@ function board(ctx) {
   groundGlow.addColorStop(1, 'rgba(242, 181, 68, 0)');
   ctx.fillStyle = groundGlow;
   ctx.fillRect(40, 396, 1200, 34);
+  // drifting motes: cheap depth, and motion behind a still frame
+  for (let i = 0; i < 26; i += 1) {
+    const seedX = (i * 137.5) % 1240;
+    const seedY = 90 + ((i * 79.3) % 320);
+    const x = seedX + Math.sin(state.time * 0.35 + i) * 14;
+    const y = seedY + Math.cos(state.time * 0.28 + i * 1.7) * 9;
+    const alpha = 0.06 + ((i % 5) * 0.012);
+    ctx.fillStyle = `rgba(255, 212, 121, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(x, y, i % 3 === 0 ? 2.2 : 1.3, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 function statusTags(ctx, enemy, cx, y) {
@@ -93,29 +115,31 @@ function statusTags(ctx, enemy, cx, y) {
 
 function intentBadge(ctx, enemy, cx, y) {
   if (!enemy.intent) return;
-  const w = 64;
+  const w = 58;
   const h = 24;
   const x = cx - w / 2;
   roundRect(ctx, x, y - h / 2, w, h, 5);
-  ctx.fillStyle = 'rgba(42, 29, 12, 0.92)';
+  ctx.fillStyle = 'rgba(30, 20, 8, 0.95)';
   ctx.fill();
-  ctx.strokeStyle = enemy.intent.type === 'attack' ? '#c0392b' : 'rgba(201,154,78,0.65)';
-  ctx.lineWidth = 1.3;
+  ctx.strokeStyle = enemy.intent.tint;
+  ctx.lineWidth = 1.4;
   ctx.stroke();
-  drawIntentIcon(ctx, enemy.intent.icon, x + 16, y, 12, enemy.intent.tint);
-  const value = enemy.intent.type === 'attack' ? `${enemy.intent.value}` : `${enemy.intent.value}`;
-  paintText(ctx, value, x + 30, y + 5, {
-    size: 13,
+  drawIntentIcon(ctx, enemy.intent.icon, x + 17, y, 13, enemy.intent.tint);
+  paintText(ctx, String(enemy.intent.value), x + 34, y + 5.5, {
+    size: 14,
     weight: 900,
     mono: true,
     color: PALETTE.wax,
   });
-  paintText(ctx, enemy.intent.label, x + w - 6, y + 4, {
-    align: 'right',
-    size: 7,
-    color: enemy.intent.tint,
-    spacing: 0.6,
-  });
+  if (enemy.intent.type !== 'attack') {
+    paintText(ctx, enemy.intent.label.slice(0, 3), cx + 6, y - h / 2 - 4, {
+      align: 'center',
+      size: 8,
+      weight: 700,
+      color: enemy.intent.tint,
+      spacing: 1.4,
+    });
+  }
 }
 
 function drawEnemy(ctx, enemy, index, count) {
@@ -134,13 +158,23 @@ function drawEnemy(ctx, enemy, index, count) {
   ctx.fillStyle = inner;
   ctx.fill();
   ctx.strokeStyle = dead ? 'rgba(138,115,80,0.5)' : enemy.body;
-  ctx.lineWidth = dead ? 1 : 2.2;
+  ctx.lineWidth = dead ? 1 : 2.6;
   ctx.stroke();
+
+  if (!dead) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy - 4, r - 9, Math.PI * 1.12, Math.PI * 1.88);
+    ctx.strokeStyle = 'rgba(255, 244, 214, 0.12)';
+    ctx.lineWidth = 7;
+    ctx.stroke();
+    ctx.restore();
+  }
 
   ctx.save();
   hexPath(ctx, cx, cy, r - 2);
   ctx.clip();
-  drawEnemyBody(ctx, enemy.shape, cx, cy + 6, enemy.boss ? 60 : 46, enemy.body, enemy.accent, state.time);
+  drawEnemyBody(ctx, enemy.shape, cx, cy + 4, enemy.boss ? 72 : 58, enemy.body, enemy.accent, state.time);
   ctx.restore();
 
   if (!dead && state.enemies[state.target] === enemy) {
@@ -181,15 +215,15 @@ function drawEnemy(ctx, enemy, index, count) {
     ctx.fillStyle = fill;
     ctx.fill();
   }
-  paintText(ctx, `${enemy.hp}/${enemy.maxHp}`, cx, barY + 22, {
+  paintText(ctx, `${enemy.hp} / ${enemy.maxHp}`, cx, cy + LAYOUT.enemy.hpTextDy, {
     align: 'center',
-    size: 10,
+    size: 11,
     mono: true,
     color: dead ? PALETTE.faint : PALETTE.body,
   });
 
   if (enemy.boss && !dead) {
-    paintText(ctx, `PHASE ${enemy.phase}`, cx, barY + 36, {
+    paintText(ctx, `PHASE ${enemy.phase}`, cx, cy + LAYOUT.enemy.phaseDy, {
       align: 'center',
       size: 9,
       weight: 700,
@@ -214,6 +248,25 @@ function drawEnemy(ctx, enemy, index, count) {
 function drawEnemies(ctx) {
   const count = state.enemies.length;
   state.enemies.forEach((enemy, index) => drawEnemy(ctx, enemy, index, count));
+  // the floor's name, small and centred, so the fight has a chapter title
+  const title = floorName(state.floor);
+  const width = textWidth(ctx, title, 12, 700, false, 4);
+  const y = 344;
+  paintText(ctx, title, 640, y, {
+    align: 'center',
+    size: 12,
+    weight: 700,
+    color: 'rgba(201, 168, 106, 0.6)',
+    spacing: 4,
+  });
+  ctx.strokeStyle = 'rgba(242, 181, 68, 0.2)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(640 - width / 2 - 24, y - 4);
+  ctx.lineTo(640 - width / 2 - 96, y - 4);
+  ctx.moveTo(640 + width / 2 + 24, y - 4);
+  ctx.lineTo(640 + width / 2 + 96, y - 4);
+  ctx.stroke();
 }
 
 function drawKeeperArea(ctx) {
@@ -321,7 +374,7 @@ function footHint(ctx, text) {
   });
 }
 
-export function drawBattleScene(ctx) {
+export function drawBattleScene(ctx, options = {}) {
   const shake = state.shake;
   ctx.save();
   if (shake > 0.15) {
@@ -331,8 +384,14 @@ export function drawBattleScene(ctx) {
   drawEnemies(ctx);
   drawKeeperArea(ctx);
   ctx.restore();
+  if (options.quiet) return;
 
   drawHud(ctx, { hoverRelic: state.hoverRelic });
+  if (options.veil) {
+    drawHand(ctx);
+    drawPiles(ctx);
+    return;
+  }
   drawHand(ctx);
   drawPiles(ctx);
   drawFloaters(ctx);
@@ -352,8 +411,12 @@ export function drawBattleScene(ctx) {
 export function drawTitleScene(ctx) {
   ctx.fillStyle = PALETTE.night;
   ctx.fillRect(0, 0, 1280, 720);
-  combField(ctx, 1280, 760, 52, { stroke: '#241705', fill: 'rgba(42,29,12,0.28)', fillEvery: 7 });
-  glow(ctx, LAYOUT.title.combCx, LAYOUT.title.combCy, 380, 'rgba(242, 181, 68, 0.22)', 1);
+  combField(ctx, 1280, 760, 52, {
+    stroke: 'rgba(242,181,68,0.13)',
+    fill: 'rgba(242,181,68,0.04)',
+    fillEvery: 6,
+  });
+  glow(ctx, LAYOUT.title.combCx, LAYOUT.title.combCy, 360, 'rgba(242, 181, 68, 0.2)', 1);
 
   // the one lit comb in the middle of the dark
   hexPath(ctx, LAYOUT.title.combCx, LAYOUT.title.combCy, LAYOUT.title.combR);
@@ -365,23 +428,34 @@ export function drawTitleScene(ctx) {
     LAYOUT.title.combCy,
     LAYOUT.title.combR,
   );
-  bodyGrad.addColorStop(0, 'rgba(255, 212, 121, 0.2)');
-  bodyGrad.addColorStop(1, 'rgba(36, 23, 5, 0.92)');
+  bodyGrad.addColorStop(0, 'rgba(255, 212, 121, 0.22)');
+  bodyGrad.addColorStop(1, 'rgba(36, 23, 5, 0.9)');
   ctx.fillStyle = bodyGrad;
   ctx.fill();
   ctx.strokeStyle = PALETTE.amber;
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  // honey cells inside it
   ctx.save();
   hexPath(ctx, LAYOUT.title.combCx, LAYOUT.title.combCy, LAYOUT.title.combR - 4);
   ctx.clip();
-  ctx.translate(LAYOUT.title.combCx - 190, LAYOUT.title.combCy - 170);
-  combField(ctx, 380, 360, 26, { stroke: 'rgba(242,181,68,0.14)' });
+  ctx.translate(LAYOUT.title.combCx - 190, LAYOUT.title.combCy - 180);
+  combField(ctx, 380, 380, 26, { stroke: 'rgba(242,181,68,0.2)' });
   ctx.restore();
 
-  const pulse = 0.62 + Math.sin(state.time * 2.2) * 0.32;
+  // bees first, so the type always reads over them
+  for (let i = 0; i < 3; i += 1) {
+    const angle = 0.7 + i * 2.1 + Math.sin(state.time * 0.4 + i) * 0.12;
+    const rx = 356 + i * 22;
+    const x = LAYOUT.title.combCx + Math.cos(angle) * rx;
+    const y = LAYOUT.title.combCy + Math.sin(angle * 0.8) * 150;
+    drawBee(ctx, x, y, 30 - i * 4, PALETTE.amber, state.time * 13 + i, 0.85);
+  }
+
+  glow(ctx, LAYOUT.title.combCx, 176, 96, 'rgba(255,212,121,0.3)', 1);
+  hexBox(ctx, LAYOUT.title.combCx, 176, 34, 'rgba(36,23,5,0.9)', 'rgba(242,181,68,0.6)', 1.5);
+  drawBee(ctx, LAYOUT.title.combCx, 176, 32, PALETTE.amber, state.time * 9, 1);
+
   paintText(ctx, 'HIVE LEDGER', LAYOUT.title.combCx, LAYOUT.title.nameY, {
     align: 'center',
     size: 84,
@@ -399,13 +473,14 @@ export function drawTitleScene(ctx) {
     spacing: 0.5,
   });
 
+  const pulse = 0.55 + Math.sin(state.time * 2.2) * 0.35;
   paintText(ctx, 'CLICK TO BEGIN', LAYOUT.title.combCx, LAYOUT.title.beginY, {
     align: 'center',
-    size: 22,
+    size: 24,
     weight: 900,
     color: PALETTE.amber,
-    spacing: 4,
-    alpha: pulse,
+    spacing: 5,
+    alpha: 0.55 + pulse * 0.45,
   });
   paintText(ctx, `BEST FLOOR ${state.bestFloor} / ${RULES.floors}`, LAYOUT.title.combCx, LAYOUT.title.bestY, {
     align: 'center',
@@ -423,6 +498,22 @@ export function drawTitleScene(ctx) {
     });
   });
 
+  // the five suits, as a legend under the controls
+  const suitRow = Object.keys(SUITS);
+  const chipW = 108;
+  const rowW = suitRow.length * chipW;
+  suitRow.forEach((key, index) => {
+    const meta = SUITS[key];
+    const cx = LAYOUT.title.combCx - rowW / 2 + index * chipW + chipW / 2 - 16;
+    hexBox(ctx, cx - 22, LAYOUT.title.chipsY - 4, 8, meta.color, null, 0);
+    paintText(ctx, meta.cn, cx - 22, LAYOUT.title.chipsY, { align: 'center', size: 8, weight: 700, color: meta.ink });
+    paintText(ctx, meta.label, cx - 10, LAYOUT.title.chipsY, {
+      size: 9,
+      color: 'rgba(201,168,106,0.8)',
+      spacing: 1.6,
+    });
+  });
+
   paintText(
     ctx,
     'Built from scratch this session · 8 floors · 24+ cards · 8 relics · 8 enemy kinds · sound on',
@@ -430,24 +521,19 @@ export function drawTitleScene(ctx) {
     LAYOUT.title.footY,
     { align: 'center', size: 11, color: PALETTE.faint },
   );
-
-  // three bees drifting around the comb
-  for (let i = 0; i < 3; i += 1) {
-    const angle = state.time * (0.5 + i * 0.16) + i * 2.1;
-    const rx = 250 + i * 32;
-    const x = LAYOUT.title.combCx + Math.cos(angle) * rx;
-    const y = LAYOUT.title.combCy + Math.sin(angle * 0.8) * 150;
-    drawBee(ctx, x, y, 16 - i * 2, PALETTE.amber, state.time * 14 + i, 0.9);
-  }
 }
 
 export function drawRewardScene(ctx) {
-  drawBattleScene(ctx);
-  ctx.fillStyle = 'rgba(10, 6, 2, 0.74)';
+  // the fight, still going, thrown out of focus behind the choice
+  ctx.save();
+  ctx.filter = 'blur(6px)';
+  drawBattleScene(ctx, { veil: true });
+  ctx.restore();
+  ctx.fillStyle = 'rgba(10, 6, 2, 0.6)';
   ctx.fillRect(0, 0, 1280, 720);
-  const vignette = ctx.createRadialGradient(640, 330, 180, 640, 360, 760);
+  const vignette = ctx.createRadialGradient(640, 330, 200, 640, 360, 780);
   vignette.addColorStop(0, 'rgba(0,0,0,0)');
-  vignette.addColorStop(1, 'rgba(8, 5, 2, 0.85)');
+  vignette.addColorStop(1, 'rgba(8, 5, 2, 0.9)');
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, 1280, 720);
 
@@ -470,15 +556,14 @@ export function drawRewardScene(ctx) {
   cards.forEach((card, index) => {
     const x = LAYOUT.reward.startX + index * (LAYOUT.reward.cardW + LAYOUT.reward.gap);
     drawRewardCard(ctx, card, index, x, LAYOUT.reward.cardY, LAYOUT.reward.cardW, LAYOUT.reward.cardH, hoverIndex === index);
-    if (hoverIndex === index) {
-      paintText(ctx, RARITY[card.rarity].label, x + LAYOUT.reward.cardW / 2, LAYOUT.reward.cardY - 14, {
-        align: 'center',
-        size: 10,
-        weight: 700,
-        color: RARITY[card.rarity].glow,
-        spacing: 3,
-      });
-    }
+    paintText(ctx, RARITY[card.rarity].label, x + LAYOUT.reward.cardW / 2, LAYOUT.reward.cardY - 12, {
+      align: 'center',
+      size: 10,
+      weight: 700,
+      color: RARITY[card.rarity].glow,
+      spacing: 3,
+      alpha: hoverIndex === index ? 1 : 0.75,
+    });
   });
 
   // a small standing record of the run, so the choice has context
@@ -514,6 +599,30 @@ export function drawRewardScene(ctx) {
     drawRelicGlyph(ctx, relic.glyph, panelX + 26 + index * 30, 478, 8, PALETTE.honey);
   });
 
+  // what is waiting on the next floor, so the choice has weight
+  const nextKinds = floorEnemies(state.floor + 1);
+  const rowW = nextKinds.length * 70;
+  const rowX = 640 - rowW / 2 + 35;
+  paintText(ctx, 'NEXT FLOOR', rowX - 62, 540, {
+    align: 'right',
+    size: 10,
+    color: PALETTE.faint,
+    spacing: 2,
+  });
+  nextKinds.forEach((kind, index) => {
+    const meta = ENEMY_KINDS[kind];
+    const cx = rowX + index * 70;
+    hexBox(ctx, cx, 536, 17, 'rgba(42,29,12,0.95)', meta.body, 1.4);
+    drawEnemyBody(ctx, meta.shape, cx, 536, 22, meta.body, meta.accent, 0);
+    paintText(ctx, meta.name, cx, 568, {
+      align: 'center',
+      size: 7,
+      weight: 700,
+      color: PALETTE.dim,
+      spacing: 1,
+    });
+  });
+
   const skipY = LAYOUT.reward.skipY;
   const hoverSkip = state.hoverSkip;
   paintText(ctx, 'SKIP — take 5 nectar instead', 640, skipY, {
@@ -529,17 +638,23 @@ export function drawRewardScene(ctx) {
   ctx.lineTo(640 + width / 2, skipY + 5);
   ctx.stroke();
   footHint(ctx, '1 2 3 or CLICK to take a card · S to skip for nectar');
+  void rowW;
 }
 
 export function drawEndScene(ctx) {
   const won = state.outcome === 'win';
   ctx.fillStyle = won ? '#241705' : '#140b06';
   ctx.fillRect(0, 0, 1280, 720);
-  combField(ctx, 1280, 760, 54, {
-    stroke: won ? 'rgba(242,181,68,0.16)' : 'rgba(216,70,47,0.14)',
-    fill: won ? 'rgba(242,181,68,0.05)' : 'rgba(216,70,47,0.04)',
-    fillEvery: 5,
+  combField(ctx, 1280, 760, 40, {
+    stroke: won ? 'rgba(242,181,68,0.1)' : 'rgba(216,70,47,0.1)',
+    fill: null,
   });
+  const fade = ctx.createLinearGradient(0, 0, 0, 720);
+  fade.addColorStop(0, 'rgba(10,7,3,0.55)');
+  fade.addColorStop(0.5, 'rgba(10,7,3,0.15)');
+  fade.addColorStop(1, 'rgba(10,7,3,0.7)');
+  ctx.fillStyle = fade;
+  ctx.fillRect(0, 0, 1280, 720);
   glow(ctx, 640, 330, 460, won ? 'rgba(255,212,121,0.22)' : 'rgba(216,70,47,0.18)', 1);
 
   paintText(ctx, won ? 'THE HIVE HOLDS' : 'THE COMB IS LOST', 640, LAYOUT.end.titleY, {
@@ -571,7 +686,7 @@ export function drawEndScene(ctx) {
     const row = Math.floor(index / 3);
     const x = LAYOUT.end.statXs[col];
     const y = LAYOUT.end.statYs[row];
-    paintText(ctx, key, x, y, { align: 'center', size: 11, color: PALETTE.dim, spacing: 3 });
+    paintText(ctx, key, x, y, { align: 'center', size: 11, color: '#a08a5f', spacing: 3 });
     paintText(ctx, value, x, y + 40, {
       align: 'center',
       size: 30,
@@ -579,11 +694,11 @@ export function drawEndScene(ctx) {
       mono: true,
       color: PALETTE.wax,
     });
-    ctx.strokeStyle = 'rgba(242,181,68,0.18)';
+    ctx.strokeStyle = 'rgba(242,181,68,0.3)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(x - 90, y + 58);
-    ctx.lineTo(x + 90, y + 58);
+    ctx.moveTo(x - 92, y + 58);
+    ctx.lineTo(x + 92, y + 58);
     ctx.stroke();
   });
 
@@ -614,5 +729,24 @@ export function drawEndScene(ctx) {
     spacing: 3,
     mono: true,
   });
+
+  // what the keeper carried out of the dark
+  const carried = state.relics.length;
+  const labelW = carried ? 74 : 0;
+  const relicW = carried * 34;
+  const relicX = 640 - (relicW + labelW) / 2 + 17;
+  if (carried) {
+    paintText(ctx, 'CARRIED', relicX - 22, 690, {
+      align: 'right',
+      size: 10,
+      color: PALETTE.faint,
+      spacing: 2,
+    });
+    state.relics.forEach((relic, index) => {
+      const cx = relicX + index * 34;
+      hexBox(ctx, cx, 686, 13, 'rgba(42,29,12,0.9)', '#c99a4e', 1.2);
+      drawRelicGlyph(ctx, relic.glyph, cx, 686, 8, PALETTE.honey);
+    });
+  }
   void font;
 }

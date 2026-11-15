@@ -69,7 +69,7 @@ function refreshHover(point) {
     state.hoverEnd = inside(point, HIT.endTurn);
   } else if (state.scene === 'reward') {
     state.hoverCard = rewardIndexAt(point);
-    state.hoverSkip = inside(point, HIT.skip) || (point.y > 540 && point.y < 580);
+    state.hoverSkip = inside(point, HIT.skip) || (point.y > 586 && point.y < 626);
   } else if (state.scene === 'end') {
     state.hoverPlayAgain = inside(point, HIT.playAgain);
   }
@@ -107,7 +107,7 @@ function click(point) {
         takeReward(index);
         return;
       }
-      if (inside(point, HIT.skip) || (point.y > 540 && point.y < 580)) {
+      if (inside(point, HIT.skip) || (point.y > 586 && point.y < 626)) {
         skipReward();
         return;
       }

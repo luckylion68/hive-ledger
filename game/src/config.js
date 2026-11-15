@@ -75,7 +75,7 @@ export const LAYOUT = Object.freeze({
   wax: { hexX: 820, hexY: 38, r: 12, textX: 842 },
   combo: { x: 1040, y: 22, w: 120, h: 28 },
   endHint: { x: 1252, baseline: 41 },
-  enemy: { cx: [320, 640, 960], cy: 205, r: 54, nameY: 118, intentY: 92, hpDy: 72, tagDy: 92 },
+  enemy: { cx: [320, 640, 960], cy: 205, r: 54, nameY: 116, intentY: 86, hpDy: 64, hpTextDy: 84, tagDy: 94, phaseDy: 112 },
   keeper: { x: 140, y: 362, r: 40, labelY: 412 },
   bees: [
     { x: 228, y: 340 },
@@ -85,13 +85,13 @@ export const LAYOUT = Object.freeze({
   hand: { y: 436, gap: 26, startX: 148, w: 176, h: 248 },
   card: { costX: -8, costY: -8, costR: 15, artX: 10, artY: 34, artW: 156, artH: 100, nameY: 154, ruleY: 176, bandY: 224, bandH: 24 },
   footHint: { y: 708 },
-  title: { combCx: 640, combCy: 300, combR: 176, nameY: 296, subY: 344, beginY: 436, bestY: 474, keysY: [548, 574, 600], footY: 690 },
-  reward: { titleY: 112, subY: 152, cardY: 212, cardW: 200, cardH: 290, startX: 200, gap: 40, skipY: 566 },
+  title: { combCx: 640, combCy: 278, combR: 168, nameY: 300, subY: 344, beginY: 492, bestY: 526, keysY: [570, 596, 622], chipsY: 660, footY: 694 },
+  reward: { titleY: 112, subY: 152, cardY: 212, cardW: 200, cardH: 290, startX: 200, gap: 40, skipY: 606 },
   end: { titleY: 180, statYs: [300, 400], statXs: [300, 640, 980], button: { x: 510, y: 500, w: 260, h: 64 }, hintY: 620 },
 });
 
 export const HIT = Object.freeze({
   endTurn: { x: 1040, y: 14, w: 240, h: 40 },
   playAgain: { x: 510, y: 500, w: 260, h: 64 },
-  skip: { x: 440, y: 546, w: 400, h: 36 },
+  skip: { x: 440, y: 586, w: 400, h: 36 },
 });

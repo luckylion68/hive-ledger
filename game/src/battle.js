@@ -1,7 +1,7 @@
 // The turn loop: draw five, spend nectar, hand the turn over, take the night's answer. Everything
 // that changes a number does it through hive.js; this file only decides the order of events.
 import { RULES } from './config.js';
-import { state, bumpStat, toast } from './state.js';
+import { state, bumpStat, toast, resetRun } from './state.js';
 import { createRng } from './random.js';
 import { buildDeck, drawCards, discardHand, discardCard } from './deck.js';
 import { makeEnemyLine } from './enemies.js';
@@ -30,12 +30,10 @@ import { playSound } from './audio.js';
 import { onFloorCleared, onDefeat } from './scenes.js';
 
 export function startRun(seed, startingRelics = []) {
+  resetRun(seed);
   state.rng = createRng(seed);
   state.deck = buildDeck(STARTER_DECK);
   state.relics = [];
-  state.floor = 1;
-  state.turn = 1;
-  state.stats.turns = 0;
   for (const id of startingRelics) grantRelic(id);
   startBattle(1);
 }

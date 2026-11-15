@@ -10,7 +10,7 @@ export function gainNectar(amount, quiet = false) {
   const gained = state.nectar - before;
   bumpStat('nectarGathered', gained);
   if (!quiet && gained > 0) {
-    addFloater(`+${gained} NECTAR`, LAYOUT.nectar.dotX + 60, LAYOUT.nectar.cy + 18, SUITS.gather.color, 18);
+    addFloater(`+${gained} NECTAR`, 330, 388, SUITS.gather.color, 18);
   }
   return gained;
 }
@@ -25,7 +25,7 @@ export function gainWax(amount) {
   if (amount <= 0) return 0;
   state.wax += amount;
   bumpStat('waxBuilt', amount);
-  addFloater(`+${amount} WAX`, LAYOUT.wax.hexX - 14, LAYOUT.wax.hexY + 34, SUITS.guard.color, 20);
+  addFloater(`+${amount} WAX`, 950, 388, SUITS.guard.color, 20);
   return amount;
 }
 
@@ -38,7 +38,7 @@ export function healSwarm(amount) {
   const before = state.swarm;
   state.swarm = Math.min(state.swarmMax, state.swarm + amount);
   const healed = state.swarm - before;
-  if (healed > 0) addFloater(`+${healed}`, LAYOUT.keeper.x + 26, LAYOUT.keeper.y - 26, SUITS.leaf || '#b8d94a', 22);
+  if (healed > 0) addFloater(`+${healed}`, LAYOUT.keeper.x + 74, LAYOUT.keeper.y + 22, '#b8d94a', 22);
   return healed;
 }
 
@@ -50,12 +50,12 @@ export function hurtSwarm(amount, options = {}) {
     const soaked = Math.min(state.wax, left);
     state.wax -= soaked;
     left -= soaked;
-    if (soaked > 0) addFloater(`-${soaked} WAX`, LAYOUT.keeper.x + 40, LAYOUT.keeper.y + 6, SUITS.guard.color, 17);
+    if (soaked > 0) addFloater(`-${soaked} WAX`, LAYOUT.keeper.x + 10, LAYOUT.keeper.y - 50, SUITS.guard.color, 17);
   }
   if (left <= 0) return 0;
   state.swarm = Math.max(0, state.swarm - left);
   bumpStat('damageTaken', left);
-  addFloater(`-${left}`, LAYOUT.keeper.x + 6, LAYOUT.keeper.y - 40, '#d8462f', 26);
+  addFloater(`-${left}`, LAYOUT.keeper.x + 4, LAYOUT.keeper.y - 76, '#d8462f', 26);
   addShake(3 + Math.min(6, left * 0.3));
   return left;
 }
@@ -67,8 +67,10 @@ export function spawnBees(count) {
 }
 
 export function boostBees(amount) {
+  if (amount <= 0) return state.beePower;
   state.beePower += amount;
   addFloater(`BEES +${amount}`, LAYOUT.bees[1].x + 30, LAYOUT.bees[1].y - 6, '#b8d94a', 16);
+  return state.beePower;
 }
 
 export function playerPoison(amount) {

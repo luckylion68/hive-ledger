@@ -114,7 +114,7 @@ export function drawBee(ctx, x, y, size, color, flap = 0, alpha = 1) {
   ctx.globalAlpha = alpha;
   ctx.translate(x, y);
   // wings first, so the body sits on top of them
-  ctx.fillStyle = 'rgba(255, 244, 214, 0.34)';
+  ctx.fillStyle = 'rgba(255, 244, 214, 0.2)';
   const wingLift = Math.sin(flap) * 0.35;
   ctx.beginPath();
   ctx.ellipse(-2 * s, -4.2 * s, 3.4 * s, 1.7 * s, -0.55 + wingLift, 0, Math.PI * 2);
@@ -523,6 +523,8 @@ export function drawCardArt(ctx, art, suit, x, y, w, h) {
   combField(ctx, w + 40, h + 40, 13, { stroke: 'rgba(255, 212, 121, 0.07)' });
   ctx.globalAlpha = 1;
   const s = Math.min(w, h) / 100;
+  // the artwork is authored in a 100 x 100 box; centre that box inside the wider card window
+  ctx.translate((w - 100 * s) / 2, (h - 100 * s) / 2);
   switch (art) {
     case 'drop': {
       ctx.fillStyle = tint;

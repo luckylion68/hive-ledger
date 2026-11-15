@@ -8,6 +8,7 @@ import { CARDS_BY_ID } from './cards.js';
 import { RELICS, grantRelic, hasRelic } from './relics.js';
 import { floorPaysRelic, isLastFloor, floorTitle } from './floors.js';
 import { playSound } from './audio.js';
+import { healSwarm } from './hive.js';
 
 const RARITY_ORDER = ['common', 'rare', 'epic'];
 
@@ -50,6 +51,7 @@ function offerRelic() {
 export function onFloorCleared() {
   bumpStat('floorsCleared', 1);
   state.bestFloor = Math.max(state.bestFloor, state.floor);
+  healSwarm(4);
   if (floorPaysRelic(state.floor)) offerRelic();
   if (isLastFloor(state.floor)) {
     state.outcome = 'win';

@@ -2,9 +2,13 @@
 // fight gets its own short voice. The context is created on the first gesture, as browsers demand.
 let context = null;
 let master = null;
+// Nothing is synthesised until a real gesture has unlocked audio, so the page never logs an
+// autoplay warning and the screenshot run stays quiet.
+let armed = false;
 
 function audioContext() {
   if (context) return context;
+  if (typeof window === 'undefined') return null;
   const Ctor = window.AudioContext || window.webkitAudioContext;
   if (!Ctor) return null;
   try {
@@ -19,6 +23,7 @@ function audioContext() {
 }
 
 export function initAudio() {
+  armed = true;
   const ctx = audioContext();
   if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
   return Boolean(ctx);
@@ -131,7 +136,7 @@ const VOICES = {
 };
 
 export function playSound(name) {
-  if (stateIsMuted()) return;
+  if (!armed || stateIsMuted()) return;
   const voice = VOICES[name];
   if (!voice) return;
   if (!context) {

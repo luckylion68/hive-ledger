@@ -16,7 +16,10 @@ body {
 #frame {
   position: fixed;
   inset: 0;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
   background: radial-gradient(circle at 50% 42%, #241705 0%, #120c05 62%, #0a0703 100%);
 }
 
