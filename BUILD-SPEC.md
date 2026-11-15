@@ -255,6 +255,14 @@ node D:/WorkBuddy/2026-10-23-12-18-28/bg-recon/best-game-01-kit/cli/makefun.mjs 
   --keypair D:/WorkBuddy/2026-10-23-12-18-28/.makefun-keys/makefun-keypair.json
 ```
 
+### 打包必须先补齐 run record（否则 bundle 拒绝写文件）
+
+直接跑  会报 prompt / system prompt / instruction files / MCP / agent facts 缺失。
+用这一条完整的（已实测可用，缺一不可）：
+
+\
+（harness 与 model 由会话日志自带：codebuddy / deepseek-v4.1-flash；只缺 version、provider、effort。）
+
 ### 如果 bundle 说找不到会话
 
 说明自动发现没认出本会话（会话是按工作目录索引的）。手动指定：
