@@ -1,6 +1,6 @@
 [
-  { "name": "1-battle.jpg", "query": "?shot=battle&seed=35" },
-  { "name": "2-title.jpg", "query": "?shot=title&seed=7" },
+  { "name": "1-title.jpg", "query": "?shot=title&seed=7" },
+  { "name": "2-battle.jpg", "query": "?shot=battle&seed=35" },
   { "name": "3-reward.jpg", "query": "?shot=reward&seed=35" },
   { "name": "4-victory.jpg", "query": "?shot=victory&seed=23" }
 ]

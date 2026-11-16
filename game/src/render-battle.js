@@ -23,6 +23,7 @@ import { rewardCards } from './scenes.js';
 import { floorTitle, floorName, floorEnemies } from './floors.js';
 import { ENEMY_KINDS } from './enemies.js';
 import { CARD_W, CARD_H } from './render-cards.js';
+import { CARDS_BY_ID } from './cards.js';
 
 const HAND_STEP = CARD_W + LAYOUT.hand.gap;
 
@@ -46,40 +47,113 @@ export function handCardRect(index, count = state.hand.length) {
   return { x, y: LAYOUT.hand.y, w: CARD_W, h: CARD_H };
 }
 
+// A cavern, not a table: the board is a room the fight happens inside. Depth comes from three
+// cheap layers in this order — the far wall in perspective, the light, then everything in front.
 function board(ctx) {
-  ctx.fillStyle = PALETTE.night;
+  // 1. the air: cold at the ceiling, warm where the honey sits, so the amber is never the ground
+  const air = ctx.createLinearGradient(0, 0, 0, 720);
+  air.addColorStop(0, '#08090d');
+  air.addColorStop(0.34, '#120f0c');
+  air.addColorStop(0.58, '#1b1207');
+  air.addColorStop(1, '#120c05');
+  ctx.fillStyle = air;
   ctx.fillRect(0, 0, 1280, 720);
-  combField(ctx, 1280, 760, 46, { stroke: '#241705', lineWidth: 1 });
-  glow(ctx, 640, 210, 520, 'rgba(242, 181, 68, 0.12)', 1);
-  const floorShade = ctx.createLinearGradient(0, 64, 0, 430);
-  floorShade.addColorStop(0, 'rgba(36, 23, 5, 0.85)');
-  floorShade.addColorStop(1, 'rgba(18, 12, 5, 0)');
-  ctx.fillStyle = floorShade;
-  ctx.fillRect(0, 64, 1280, 366);
-  // the ledge the keeper stands on
-  ctx.strokeStyle = 'rgba(242, 181, 68, 0.16)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(40, 400);
-  ctx.lineTo(1240, 400);
-  ctx.stroke();
-  const groundGlow = ctx.createLinearGradient(0, 396, 0, 430);
-  groundGlow.addColorStop(0, 'rgba(242, 181, 68, 0.08)');
-  groundGlow.addColorStop(1, 'rgba(242, 181, 68, 0)');
-  ctx.fillStyle = groundGlow;
-  ctx.fillRect(40, 396, 1200, 34);
-  // drifting motes: cheap depth, and motion behind a still frame
-  for (let i = 0; i < 26; i += 1) {
-    const seedX = (i * 137.5) % 1240;
-    const seedY = 90 + ((i * 79.3) % 320);
-    const x = seedX + Math.sin(state.time * 0.35 + i) * 14;
-    const y = seedY + Math.cos(state.time * 0.28 + i * 1.7) * 9;
-    const alpha = 0.06 + ((i % 5) * 0.012);
-    ctx.fillStyle = `rgba(255, 212, 121, ${alpha})`;
+
+  // 2. the far wall: comb cells that shrink as they climb, so the eye reads a distance
+  ctx.save();
+  for (let y = -30; y < 392; y += 12) {
+    const depth = Math.min(1, Math.max(0, y / 392));
+    const radius = 15 + depth * 30;
+    const stepX = Math.sqrt(3) * radius;
+    const offset = Math.round(y / 12) % 2 === 0 ? 0 : stepX / 2;
+    for (let x = -radius; x < 1280 + radius; x += stepX) {
+      hexPath(ctx, x + offset, y, radius * 0.96);
+      ctx.strokeStyle = `rgba(78, 56, 24, ${0.1 + depth * 0.26})`;
+      ctx.lineWidth = 0.6 + depth * 0.8;
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+  // the wall fades into fog before it reaches the ledge
+  const fog = ctx.createLinearGradient(0, 230, 0, 410);
+  fog.addColorStop(0, 'rgba(8, 9, 13, 0)');
+  fog.addColorStop(1, 'rgba(10, 8, 5, 0.92)');
+  ctx.fillStyle = fog;
+  ctx.fillRect(0, 230, 1280, 180);
+
+  // 3. the honey pool: the one warm light the room has, sitting under the enemy line
+  glow(ctx, 640, 404, 560, 'rgba(242, 181, 68, 0.16)', 1);
+  glow(ctx, 640, 404, 260, 'rgba(255, 196, 90, 0.14)', 1);
+
+  // 4. light shafts from the crack above, angled, barely there — only felt at the edges
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const shaft = [[300, -60, 210, 470], [560, -60, 130, 470], [880, -60, 250, 470], [1120, -60, 90, 470]];
+  for (const [x, y0, w, h] of shaft) {
+    const g = ctx.createLinearGradient(0, y0, 0, y0 + h);
+    g.addColorStop(0, 'rgba(255, 214, 140, 0.055)');
+    g.addColorStop(1, 'rgba(255, 214, 140, 0)');
+    ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.arc(x, y, i % 3 === 0 ? 2.2 : 1.3, 0, Math.PI * 2);
+    ctx.moveTo(x, y0);
+    ctx.lineTo(x + w, y0);
+    ctx.lineTo(x + w + 130, y0 + h);
+    ctx.lineTo(x + 60, y0 + h);
+    ctx.closePath();
     ctx.fill();
   }
+  ctx.restore();
+
+  // 5. the ceiling falls away into dark without a hard edge: a band, not a sawtooth
+  const ceiling = ctx.createLinearGradient(0, 0, 0, 150);
+  ceiling.addColorStop(0, 'rgba(5, 6, 9, 0.96)');
+  ceiling.addColorStop(1, 'rgba(5, 6, 9, 0)');
+  ctx.fillStyle = ceiling;
+  ctx.fillRect(0, 0, 1280, 150);
+
+  // 6. the ledge the keeper stands on, in silhouette against the pool
+  const ledge = ctx.createLinearGradient(0, 392, 0, 430);
+  ledge.addColorStop(0, 'rgba(6, 5, 3, 0.94)');
+  ledge.addColorStop(1, 'rgba(14, 10, 5, 0.98)');
+  ctx.fillStyle = ledge;
+  ctx.beginPath();
+  ctx.moveTo(0, 428);
+  ctx.lineTo(0, 400);
+  for (let x = 0; x <= 1280; x += 64) {
+    ctx.lineTo(x, 396 + Math.sin(x * 0.013) * 5);
+  }
+  ctx.lineTo(1280, 428);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(242, 181, 68, 0.3)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  for (let x = 0; x <= 1280; x += 64) {
+    const y = 396 + Math.sin(x * 0.013) * 5;
+    if (x === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // 7. drifting motes, a handful only: they read as air, and they move behind a still frame
+  for (let i = 0; i < 22; i += 1) {
+    const seedX = (i * 137.5) % 1240;
+    const seedY = 90 + ((i * 79.3) % 300);
+    const x = seedX + Math.sin(state.time * 0.35 + i) * 14;
+    const y = seedY + Math.cos(state.time * 0.28 + i * 1.7) * 9;
+    const alpha = 0.05 + ((i % 5) * 0.014);
+    ctx.fillStyle = `rgba(255, 214, 140, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(x, y, i % 3 === 0 ? 2 : 1.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 8. vignette: corners give up their light so the middle keeps all of it
+  const vig = ctx.createRadialGradient(640, 300, 240, 640, 330, 820);
+  vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  vig.addColorStop(1, 'rgba(2, 2, 3, 0.52)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, 1280, 720);
 }
 
 function statusTags(ctx, enemy, cx, y) {
@@ -562,10 +636,6 @@ export function drawTitleScene(ctx) {
   bodyGrad.addColorStop(1, 'rgba(36, 23, 5, 0.16)');
   ctx.fillStyle = bodyGrad;
   ctx.fill();
-  ctx.strokeStyle = 'rgba(242, 181, 68, 0.16)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
   ctx.save();
   hexPath(ctx, LAYOUT.title.combCx, LAYOUT.title.combCy, LAYOUT.title.combR - 4);
   ctx.clip();
@@ -588,10 +658,10 @@ export function drawTitleScene(ctx) {
 
   paintText(ctx, 'HIVE LEDGER', LAYOUT.title.combCx, LAYOUT.title.nameY, {
     align: 'center',
-    size: 84,
+    size: 74,
     weight: 900,
     color: PALETTE.honey,
-    spacing: 6,
+    spacing: 5,
     shadow: 'rgba(0,0,0,0.9)',
     shadowBlur: 22,
   });
@@ -602,6 +672,35 @@ export function drawTitleScene(ctx) {
     color: PALETTE.body,
     spacing: 0.5,
   });
+
+  // what the run asks of you, in one line, before anything else is read
+  const goal = 'HOLD ALL 8 FLOORS — THE SWARM REACHES 0 AND THE COMB FALLS';
+  const goalW = textWidth(ctx, goal, 12, 700, false, 3) + 44;
+  roundRect(ctx, LAYOUT.title.combCx - goalW / 2, LAYOUT.title.goalY - 15, goalW, 26, 13);
+  ctx.fillStyle = 'rgba(26, 18, 8, 0.85)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(242, 181, 68, 0.4)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  paintText(ctx, goal, LAYOUT.title.combCx, LAYOUT.title.goalY + 4, {
+    align: 'center',
+    size: 12,
+    weight: 700,
+    color: 'rgba(255, 212, 121, 0.95)',
+    spacing: 3,
+  });
+
+  // the deck itself, dealt out and held open at both sides: the game's own art is the poster
+  const dealt = [
+    { id: 'brood', x: 34, y: 398 },
+    { id: 'fury', x: 214, y: 416 },
+    { id: 'hive-shield', x: 898, y: 416 },
+    { id: 'raise-cap', x: 1078, y: 398 },
+  ];
+  for (const slot of dealt) {
+    const card = CARDS_BY_ID[slot.id];
+    if (card) drawRewardCard(ctx, card, -1, slot.x, slot.y, 168, 236, false);
+  }
 
   const pulse = 0.55 + Math.sin(state.time * 2.2) * 0.35;
   paintText(ctx, 'CLICK TO BEGIN', LAYOUT.title.combCx, LAYOUT.title.beginY, {
@@ -656,12 +755,22 @@ export function drawTitleScene(ctx) {
   );
 }
 
+let rewardBackdrop = null;
+
 export function drawRewardScene(ctx) {
-  // the fight, still going, thrown out of focus behind the choice
-  ctx.save();
-  ctx.filter = 'blur(6px)';
-  drawBattleScene(ctx, { veil: true });
-  ctx.restore();
+  // the fight, still going, thrown out of focus behind the choice. A blur filter on the whole
+  // frame costs seconds without a GPU, so the board is drawn small and scaled back up instead.
+  if (!rewardBackdrop) {
+    const small = document.createElement('canvas');
+    small.width = 320;
+    small.height = 180;
+    const sctx = small.getContext('2d');
+    sctx.scale(0.25, 0.25);
+    drawBattleScene(sctx, { veil: true });
+    rewardBackdrop = small;
+  }
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(rewardBackdrop, 0, 0, 1280, 720);
   ctx.fillStyle = 'rgba(10, 6, 2, 0.6)';
   ctx.fillRect(0, 0, 1280, 720);
   const vignette = ctx.createRadialGradient(640, 330, 200, 640, 360, 780);

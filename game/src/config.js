@@ -99,7 +99,7 @@ export const LAYOUT = Object.freeze({
     ruleBottom: 408,
   },
   relicPanel: { x: 1044, y: 104, top: 104, w: 212, rowGap: 34, rowStep: 38 },
-  title: { combCx: 640, combCy: 278, combR: 286, nameY: 300, subY: 344, beginY: 470, bestY: 504, keysY: [556, 596, 622], chipsY: 606, footY: 660 },
+  title: { combCx: 640, combCy: 278, combR: 286, nameY: 292, subY: 332, goalY: 372, beginY: 470, bestY: 504, keysY: [556, 596, 622], chipsY: 606, footY: 660 },
   reward: { titleY: 112, subY: 152, cardY: 212, cardW: 200, cardH: 290, startX: 200, gap: 40, skipY: 606 },
   end: { titleY: 180, statYs: [300, 400], statXs: [300, 640, 980], button: { x: 510, y: 500, w: 260, h: 64 }, hintY: 620 },
 });
