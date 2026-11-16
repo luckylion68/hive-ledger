@@ -248,25 +248,6 @@ function drawEnemy(ctx, enemy, index, count) {
 function drawEnemies(ctx) {
   const count = state.enemies.length;
   state.enemies.forEach((enemy, index) => drawEnemy(ctx, enemy, index, count));
-  // the floor's name, small and centred, so the fight has a chapter title
-  const title = floorName(state.floor);
-  const width = textWidth(ctx, title, 12, 700, false, 4);
-  const y = 344;
-  paintText(ctx, title, 640, y, {
-    align: 'center',
-    size: 12,
-    weight: 700,
-    color: 'rgba(201, 168, 106, 0.6)',
-    spacing: 4,
-  });
-  ctx.strokeStyle = 'rgba(242, 181, 68, 0.2)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(640 - width / 2 - 24, y - 4);
-  ctx.lineTo(640 - width / 2 - 96, y - 4);
-  ctx.moveTo(640 + width / 2 + 24, y - 4);
-  ctx.lineTo(640 + width / 2 + 96, y - 4);
-  ctx.stroke();
 }
 
 function drawKeeperArea(ctx) {
@@ -366,12 +347,159 @@ export function drawFloaters(ctx) {
   }
 }
 
+/** Cuts a line to the width it has room for, so no entry ever runs under the board's edge. */
+function truncate(ctx, str, size, weight, maxW) {
+  if (textWidth(ctx, str, size, weight, false, 0) <= maxW) return str;
+  let out = str;
+  while (out.length > 1 && textWidth(ctx, `${out}…`, size, weight, false, 0) > maxW) out = out.slice(0, -1);
+  return `${out.replace(/[ ,.]+$/, '')}…`;
+}
+
+/** The four relic slots under the HUD, spelled out: what each one does, not just its glyph. */
+function drawRelicPanel(ctx) {
+  const L = LAYOUT.relicPanel;
+  paintText(ctx, 'RELICS HELD', L.x, L.top, {
+    size: 10,
+    color: PALETTE.faint,
+    spacing: 3,
+  });
+  paintText(ctx, `${state.relics.length} / ${RULES.relicSlots}`, L.x + L.w, L.top, {
+    align: 'right',
+    size: 10,
+    mono: true,
+    color: PALETTE.dim,
+  });
+  ctx.strokeStyle = 'rgba(242, 181, 68, 0.18)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(L.x, L.top + 9);
+  ctx.lineTo(L.x + L.w, L.top + 9);
+  ctx.stroke();
+
+  for (let i = 0; i < RULES.relicSlots; i += 1) {
+    const y = L.top + L.rowGap + i * L.rowStep;
+    const relic = state.relics[i];
+    hexBox(
+      ctx,
+      L.x + 10,
+      y - 4,
+      9,
+      relic ? PALETTE.cell : 'rgba(42, 29, 12, 0.28)',
+      relic ? '#c99a4e' : 'rgba(201, 154, 78, 0.18)',
+      1
+    );
+    if (!relic) {
+      paintText(ctx, 'EMPTY SLOT', L.x + 26, y, {
+        size: 10,
+        color: 'rgba(111, 90, 56, 0.5)',
+        spacing: 2,
+      });
+      continue;
+    }
+    drawRelicGlyph(ctx, relic.glyph, L.x + 10, y - 4, 6, PALETTE.honey);
+    paintText(ctx, relic.name, L.x + 26, y, {
+      size: 10.5,
+      weight: 700,
+      color: PALETTE.honey,
+      spacing: 1,
+    });
+    paintText(ctx, truncate(ctx, relic.text, 10, 400, L.w - 26), L.x + 26, y + 13, {
+      size: 10,
+      color: 'rgba(138, 115, 80, 0.92)',
+    });
+  }
+}
+
 function footHint(ctx, text) {
   paintText(ctx, text, 640, LAYOUT.footHint.y, {
     align: 'center',
     size: 11,
     color: PALETTE.faint,
   });
+}
+
+/** What the fight is for, and three readings of it: the goal banner over the floor's name, then the
+ *  damage that is already promised, the hand you still hold, and the floor waiting behind this one. */
+function drawLedger(ctx) {
+  const L = LAYOUT.ledger;
+  const alive = state.enemies.filter((enemy) => !enemy.dead);
+
+  if (!state.toast) {
+    const goal = `${floorName(state.floor)} · HOLD ALL 8 FLOORS · SWARM AT 0 ENDS THE RUN`;
+    const goalW = textWidth(ctx, goal, 11, 700, false, 2) + 44;
+    roundRect(ctx, 640 - goalW / 2, L.goalY - L.goalH / 2, goalW, L.goalH, L.goalH / 2);
+    ctx.fillStyle = 'rgba(36, 23, 5, 0.88)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(242, 181, 68, 0.32)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    paintText(ctx, goal, 640, L.goalY + 4, {
+      align: 'center',
+      size: 11,
+      weight: 700,
+      color: 'rgba(242, 181, 68, 0.9)',
+      spacing: 2,
+    });
+  }
+
+  const incoming = alive.reduce(
+    (sum, enemy) => sum + (enemy.intent && enemy.intent.type === 'attack' ? enemy.intent.value : 0),
+    0
+  );
+  const holding = alive.filter((enemy) => enemy.intent && enemy.intent.type !== 'attack').length;
+  const nextFloor = Math.min(RULES.floors, state.floor + 1);
+  const cells = [
+    {
+      label: 'INCOMING',
+      value: incoming > 0 ? `${incoming}` : 'QUIET',
+      note: `${alive.length} RAIDER${alive.length === 1 ? '' : 'S'}${holding ? ` · ${holding} NOT HITTING` : ''}`,
+      color: incoming > 0 ? PALETTE.blood : PALETTE.leaf,
+    },
+    {
+      label: 'IN HAND',
+      value: `${state.hand.length} CARDS`,
+      note: `${state.nectar} NECTAR · TURN ${state.turn}`,
+      color: PALETTE.wax,
+    },
+    {
+      label: state.floor >= RULES.floors ? 'THE LAST COMB' : 'NEXT FLOOR',
+      value: state.floor >= RULES.floors ? 'THE QUEEN WAITS' : floorName(nextFloor),
+      note: state.floor >= RULES.floors ? 'NO RELIEF BEYOND' : `${floorEnemies(nextFloor).length} FOES`,
+      color: PALETTE.honey,
+    },
+  ];
+
+  cells.forEach((cell, index) => {
+    const cx = L.cols[index];
+    paintText(ctx, cell.label, cx, L.colY, {
+      align: 'center',
+      size: 10,
+      color: PALETTE.faint,
+      spacing: 3,
+    });
+    paintText(ctx, cell.value, cx, L.valueY, {
+      align: 'center',
+      size: cell.value.length > 9 ? 15 : 21,
+      weight: 900,
+      color: cell.color,
+      spacing: 1,
+    });
+    paintText(ctx, cell.note, cx, L.noteY, {
+      align: 'center',
+      size: 10,
+      color: 'rgba(138, 115, 80, 0.9)',
+      spacing: 1,
+    });
+  });
+
+  ctx.strokeStyle = 'rgba(242, 181, 68, 0.14)';
+  ctx.lineWidth = 1;
+  for (const x of L.rules) {
+    ctx.beginPath();
+    ctx.moveTo(x, L.ruleTop);
+    ctx.lineTo(x, L.ruleBottom);
+    ctx.stroke();
+  }
 }
 
 export function drawBattleScene(ctx, options = {}) {
@@ -392,12 +520,14 @@ export function drawBattleScene(ctx, options = {}) {
     drawPiles(ctx);
     return;
   }
+  drawLedger(ctx);
+  drawRelicPanel(ctx);
   drawHand(ctx);
   drawPiles(ctx);
   drawFloaters(ctx);
   footHint(ctx, 'CLICK a card or press 1–5 · CLICK a foe to aim · SPACE ends the turn · R restarts');
   if (state.toast) {
-    paintText(ctx, state.toast.toUpperCase(), 640, 420, {
+    paintText(ctx, state.toast.toUpperCase(), 640, LAYOUT.ledger.goalY + 4, {
       align: 'center',
       size: 12,
       weight: 700,
@@ -428,19 +558,19 @@ export function drawTitleScene(ctx) {
     LAYOUT.title.combCy,
     LAYOUT.title.combR,
   );
-  bodyGrad.addColorStop(0, 'rgba(255, 212, 121, 0.22)');
-  bodyGrad.addColorStop(1, 'rgba(36, 23, 5, 0.9)');
+  bodyGrad.addColorStop(0, 'rgba(255, 212, 121, 0.1)');
+  bodyGrad.addColorStop(1, 'rgba(36, 23, 5, 0.16)');
   ctx.fillStyle = bodyGrad;
   ctx.fill();
-  ctx.strokeStyle = PALETTE.amber;
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(242, 181, 68, 0.16)';
+  ctx.lineWidth = 1;
   ctx.stroke();
 
   ctx.save();
   hexPath(ctx, LAYOUT.title.combCx, LAYOUT.title.combCy, LAYOUT.title.combR - 4);
   ctx.clip();
-  ctx.translate(LAYOUT.title.combCx - 190, LAYOUT.title.combCy - 180);
-  combField(ctx, 380, 380, 26, { stroke: 'rgba(242,181,68,0.2)' });
+  ctx.translate(LAYOUT.title.combCx - 300, LAYOUT.title.combCy - 300);
+  combField(ctx, 600, 600, 26, { stroke: 'rgba(242,181,68,0.1)' });
   ctx.restore();
 
   // bees first, so the type always reads over them
@@ -489,14 +619,17 @@ export function drawTitleScene(ctx) {
     spacing: 3,
   });
 
-  const keys = ['CLICK a card to play it', '1–5 play by key · SPACE ends the turn', 'R restarts the run'];
-  keys.forEach((line, index) => {
-    paintText(ctx, line, LAYOUT.title.combCx, LAYOUT.title.keysY[index], {
+  paintText(
+    ctx,
+    'CLICK a card or press 1–5 · CLICK a foe to aim · SPACE ends the turn · R restarts the run',
+    LAYOUT.title.combCx,
+    LAYOUT.title.keysY[0],
+    {
       align: 'center',
       size: 13,
       color: '#a08a5f',
-    });
-  });
+    }
+  );
 
   // the five suits, as a legend under the controls
   const suitRow = Object.keys(SUITS);
@@ -516,10 +649,10 @@ export function drawTitleScene(ctx) {
 
   paintText(
     ctx,
-    'Built from scratch this session · 8 floors · 24+ cards · 8 relics · 8 enemy kinds · sound on',
+    '8 floors · 24+ cards · 8 relics · 8 enemy kinds · 5 suits · original art and sound',
     LAYOUT.title.combCx,
     LAYOUT.title.footY,
-    { align: 'center', size: 11, color: PALETTE.faint },
+    { align: 'center', size: 11, color: PALETTE.dim, spacing: 0.5 },
   );
 }
 
