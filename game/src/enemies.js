@@ -106,6 +106,124 @@ export const ENEMY_KINDS = {
     ],
     lore: 'steals your nectar',
   },
+  midge: {
+    key: 'midge',
+    name: 'MIDGE',
+    body: '#9fb84a',
+    accent: '#5f7524',
+    hp: 11,
+    wax: 0,
+    shape: 'grub',
+    cycle: [
+      { type: 'attack', value: 4 },
+      { type: 'attack', value: 4 },
+      { type: 'attack', value: 6 },
+    ],
+    lore: 'two quick bites',
+  },
+  beetle: {
+    key: 'beetle',
+    name: 'CELL BEETLE',
+    body: '#6d8f8a',
+    accent: '#3f5b58',
+    hp: 32,
+    wax: 14,
+    shape: 'bulk',
+    cycle: [
+      { type: 'block', value: 8 },
+      { type: 'attack', value: 13 },
+      { type: 'block', value: 8 },
+    ],
+    lore: 'shell like a cell wall',
+  },
+  moth: {
+    key: 'moth',
+    name: 'WAX MOTH',
+    body: '#d9cfae',
+    accent: '#8f8564',
+    hp: 19,
+    wax: 0,
+    shape: 'wasp',
+    cycle: [
+      { type: 'smoke', value: 2 },
+      { type: 'attack', value: 6 },
+      { type: 'smoke', value: 2 },
+    ],
+    lore: 'eats the wax you built',
+  },
+  drone: {
+    key: 'drone',
+    name: 'DRONE',
+    body: '#c98a3a',
+    accent: '#7d5320',
+    hp: 15,
+    wax: 0,
+    shape: 'wasp',
+    cycle: [
+      { type: 'attack', value: 16 },
+      { type: 'block', value: 4 },
+      { type: 'attack', value: 16 },
+    ],
+    lore: 'dies young, hits hard',
+  },
+  'hornet-general': {
+    key: 'hornet-general',
+    name: 'HORNET GENERAL',
+    body: '#d8462f',
+    accent: '#6d1f14',
+    hp: 64,
+    wax: 12,
+    shape: 'hornet',
+    boss: true,
+    cycle: [{ type: 'attack', value: 9 }],
+    phases: {
+      1: [
+        { type: 'attack', value: 9 },
+        { type: 'block', value: 9 },
+        { type: 'attack', value: 11 },
+      ],
+      2: [
+        { type: 'attack', value: 12 },
+        { type: 'poison', value: 5 },
+        { type: 'attack', value: 13 },
+      ],
+      3: [
+        { type: 'attack', value: 16 },
+        { type: 'attack', value: 10 },
+        { type: 'grow', value: 4 },
+      ],
+    },
+    lore: 'closes act one',
+  },
+  'wax-warden': {
+    key: 'wax-warden',
+    name: 'WAX WARDEN',
+    body: '#e0c98a',
+    accent: '#8a6b2c',
+    hp: 78,
+    wax: 16,
+    shape: 'bulk',
+    boss: true,
+    cycle: [{ type: 'block', value: 10 }],
+    phases: {
+      1: [
+        { type: 'block', value: 12 },
+        { type: 'attack', value: 11 },
+        { type: 'heal', value: 8 },
+      ],
+      2: [
+        { type: 'attack', value: 14 },
+        { type: 'heal', value: 10 },
+        { type: 'attack', value: 12 },
+      ],
+      3: [
+        { type: 'attack', value: 18 },
+        { type: 'block', value: 16 },
+        { type: 'attack', value: 18 },
+      ],
+    },
+    lore: 'rebuilds what you break',
+  },
   queen: {
     key: 'queen',
     name: 'BUMBLE QUEEN',
@@ -137,28 +255,39 @@ export const ENEMY_KINDS = {
   },
 };
 
-export const ENEMY_ORDER = ['wasp', 'mite', 'bumble', 'keeper', 'hornet', 'larva', 'thief', 'queen'];
+export const ENEMY_ORDER = ['wasp', 'mite', 'bumble', 'keeper', 'hornet', 'larva', 'thief', 'midge', 'beetle', 'moth', 'drone'];
+export const BOSS_ORDER = ['hornet-general', 'wax-warden', 'queen'];
 
 /** How much a floor hardens a body: floor 1 is as written, floor 8 is roughly half again as tough. */
 export function floorScale(floor) {
   return 1 + (floor - 1) * 0.1;
 }
 
-export function makeEnemy(kindKey, floor = 1) {
+/**
+ * One raider on the board. opts carries the run's difficulty into the body instead of leaving the
+ * numbers hard-coded: hpScale raises the body, bite raises every hit it lands, and elite marks a
+ * raid that pays more than a hunt because it costs more.
+ */
+export function makeEnemy(kindKey, floor = 1, opts = {}) {
   const kind = ENEMY_KINDS[kindKey];
   if (!kind) throw new Error(`unknown enemy ${kindKey}`);
-  const scale = kind.boss ? 1 : floorScale(floor);
+  const hpScale = opts.hpScale || 1;
+  const bite = opts.bite || 0;
+  const elite = Boolean(opts.elite) && !kind.boss;
+  const scale = (kind.boss ? 1 : floorScale(floor)) * hpScale * (elite ? 1.3 : 1);
   const hp = Math.round(kind.hp * scale);
   return {
     kind: kindKey,
-    name: kind.name,
+    name: elite ? `ELITE ${kind.name}` : kind.name,
     body: kind.body,
     accent: kind.accent,
     shape: kind.shape,
     boss: Boolean(kind.boss),
+    elite,
+    bite: bite + (elite ? 1 : 0),
     hp,
     maxHp: hp,
-    wax: Math.round(kind.wax * (kind.boss ? 1 : scale)),
+    wax: Math.round(kind.wax * scale),
     strength: 0,
     poison: 0,
     step: 0,
@@ -169,8 +298,8 @@ export function makeEnemy(kindKey, floor = 1) {
   };
 }
 
-export function makeEnemyLine(kinds, floor) {
-  return kinds.map((kind) => makeEnemy(kind, floor));
+export function makeEnemyLine(kinds, floor, opts = {}) {
+  return kinds.map((kind) => makeEnemy(kind, floor, opts));
 }
 
 export function enemyShortName(enemy) {

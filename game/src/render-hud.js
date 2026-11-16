@@ -3,7 +3,7 @@
 import { LAYOUT, PALETTE, RULES, SUITS, font } from './config.js';
 import { state } from './state.js';
 import { drawNectarDrop, drawRelicGlyph, drawShieldGlyph, hexBox, paintText, roundRect, textWidth } from './art.js';
-import { floorTitle } from './floors.js';
+import { floorTitle, actOf } from './floors.js';
 
 function label(ctx, text, x, y) {
   paintText(ctx, text, x, y, { size: 11, color: PALETTE.dim, spacing: 3, weight: 400 });
@@ -30,7 +30,8 @@ export function drawHud(ctx, opts = {}) {
     color: PALETTE.honey,
     spacing: 1,
   });
-  paintText(ctx, `TURN ${state.turn}`, LAYOUT.floorLabel.x + 2, 58, {
+  // the act rides on the second line: the first is already tight against the relic row
+  paintText(ctx, `TURN ${state.turn} · ACT ${actOf(state.floor).act}`, LAYOUT.floorLabel.x + 2, 58, {
     size: 10,
     color: PALETTE.faint,
     spacing: 2,

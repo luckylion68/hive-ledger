@@ -3,9 +3,23 @@
 // state that the battle loop would not have produced itself.
 import { RULES } from './config.js';
 import { state } from './state.js';
-import { beginRun, takeReward, skipReward, rewardCards } from './scenes.js';
+import {
+  beginRun,
+  takeReward,
+  skipReward,
+  rewardCards,
+  choosePath,
+  leaveNode,
+  takeCampMend,
+  answerOmen,
+  buyShopSlot,
+} from './scenes.js';
 import { playCard, endTurn } from './battle.js';
 import { CARDS_BY_ID } from './cards.js';
+import { rollPath } from './run.js';
+import { rollShop } from './shop.js';
+import { temperChoices } from './camp.js';
+import { rollOmen } from './omens.js';
 
 const REWARD_PREFERENCE = [
   'raise-cap',
@@ -115,11 +129,34 @@ function autoTurn() {
   if (state.scene === 'battle' && state.phase === 'player') endTurn();
 }
 
-function autoPlayToFloor(target, maxTurns = 260) {
+/** Walk out of every side room the pilot meets, taking the safe answer each time. */
+function clearSideRooms(limit = 40) {
+  let guard = 0;
+  while (guard < limit) {
+    if (state.scene === 'path') {
+      choosePath(0);
+    } else if (state.scene === 'shop') {
+      leaveNode();
+    } else if (state.scene === 'camp') {
+      if (!state.campDone) takeCampMend();
+      leaveNode();
+    } else if (state.scene === 'omen') {
+      if (!state.omenResult) answerOmen(0);
+      leaveNode();
+    } else {
+      return;
+    }
+    guard += 1;
+  }
+}
+
+function autoPlayToFloor(target, maxTurns = 420) {
   let guard = 0;
   while (guard < maxTurns) {
     if (state.scene === 'reward') {
       takeReward(preferredRewardIndex());
+    } else if (state.scene === 'path' || state.scene === 'shop' || state.scene === 'camp' || state.scene === 'omen') {
+      clearSideRooms();
     } else if (state.scene === 'battle' && state.floor < target) {
       autoTurn();
     } else {
@@ -169,12 +206,14 @@ function stageBattle(seed) {
   beginRun(seed);
   autoPlayToFloor(5);
   finishRewards();
+  clearSideRooms();
   // floor 5, turn 1: a run of one suit so the combo counter is honest when the frame is taken
   playSuitRun(3);
   if (state.scene === 'battle' && state.phase === 'player') endTurn();
   if (state.scene !== 'battle') {
     // the pilot cleared the floor on turn one; take the reward and stand on the next floor instead
     finishRewards();
+    clearSideRooms();
   }
   state.hoverCard = -1;
   state.frozen = true;
@@ -185,22 +224,96 @@ function stageReward(seed) {
   autoPlayToFloor(5);
   finishRewards();
   let guard = 0;
-  while (state.scene === 'battle' && guard < 40) {
+  while (state.scene === 'battle' && guard < 60) {
     autoTurn();
     guard += 1;
   }
+  if (state.scene === 'path') clearSideRooms();
+  if (state.scene === 'battle') {
+    let more = 0;
+    while (state.scene === 'battle' && more < 60) {
+      autoTurn();
+      more += 1;
+    }
+  }
+  finishRewards();
   state.hoverCard = 0;
+  state.frozen = true;
+}
+
+/** The last keeper, already bleeding: one raider, a lot of body, the swarm spent getting here. */
+function stageBoss(seed) {
+  beginRun(seed);
+  autoPlayToFloor(8);
+  finishRewards();
+  clearSideRooms();
+  if (state.scene === 'battle') {
+    // sting first, twice: the frame should show a bar that has already been argued with
+    for (let round = 0; round < 2; round += 1) {
+      let guard = 0;
+      while (state.scene === 'battle' && state.phase === 'player' && guard < 10) {
+        const sting = state.hand.findIndex((card) => card.suit === 'sting' && card.cost <= state.nectar);
+        const index = sting >= 0 ? sting : bestAffordableIndex();
+        if (index < 0) break;
+        playCard(index);
+        guard += 1;
+      }
+      if (state.scene === 'battle' && state.phase === 'player') endTurn();
+    }
+  }
+  state.hoverCard = -1;
   state.frozen = true;
 }
 
 function stageVictory(seed) {
   beginRun(seed);
   let guard = 0;
-  while (state.scene !== 'end' && guard < 400) {
+  while (state.scene !== 'end' && guard < 900) {
     if (state.scene === 'reward') takeReward(preferredRewardIndex());
-    else if (state.scene === 'battle') autoTurn();
+    else if (state.scene === 'path' || state.scene === 'shop' || state.scene === 'camp' || state.scene === 'omen') {
+      clearSideRooms();
+    } else if (state.scene === 'battle') autoTurn();
     else break;
     guard += 1;
+  }
+  state.frozen = true;
+}
+
+/** Stand in a side room with a real deck behind it, so the frame shows numbers the run earned. */
+function stageRoom(kind, seed) {
+  beginRun(seed);
+  autoPlayToFloor(4);
+  finishRewards();
+  let guard = 0;
+  while ((state.scene === 'battle' || state.scene === 'reward') && guard < 120) {
+    if (state.scene === 'reward') takeReward(preferredRewardIndex());
+    else autoTurn();
+    guard += 1;
+  }
+  state.coins = Math.max(state.coins, 140);
+  if (state.scene === 'path') {
+    const index = state.pathOptions.findIndex((node) => node.kind === kind);
+    if (index >= 0) choosePath(index);
+  }
+  if (state.scene !== kind) {
+    if (kind === 'shop') {
+      state.shopStock = rollShop(state.rng, state.ascension);
+      state.shopHover = 0;
+      state.scene = 'shop';
+      state.phase = 'shop';
+    } else if (kind === 'camp') {
+      state.campChoices = temperChoices();
+      state.campDone = false;
+      state.campHover = 2;
+      state.scene = 'camp';
+      state.phase = 'camp';
+    } else if (kind === 'omen') {
+      state.omen = rollOmen(state.rng);
+      state.omenResult = '';
+      state.omenHover = 0;
+      state.scene = 'omen';
+      state.phase = 'omen';
+    }
   }
   state.frozen = true;
 }
@@ -214,6 +327,28 @@ function stageTitle(seed) {
   state.frozen = true;
 }
 
+/** The fork itself: a real deck behind it, three real doors on it. */
+function stagePath(seed) {
+  beginRun(seed);
+  autoPlayToFloor(3);
+  let guard = 0;
+  while ((state.scene === 'battle' || state.scene === 'reward') && guard < 140) {
+    if (state.scene === 'reward') takeReward(preferredRewardIndex());
+    else autoTurn();
+    guard += 1;
+  }
+  if (state.scene === 'reward') takeReward(0);
+  if (state.scene !== 'path') {
+    state.pathOptions = rollPath(state.floor + 1, state.rng);
+    state.bossBanner = '';
+  }
+  state.scene = 'path';
+  state.phase = 'path';
+  state.pathPicked = -1;
+  state.hoverCard = 1;
+  state.frozen = true;
+}
+
 export function stageShot(name, seed = 7) {
   state.seed = seed;
   switch (name) {
@@ -222,6 +357,21 @@ export function stageShot(name, seed = 7) {
       break;
     case 'reward':
       stageReward(seed);
+      break;
+    case 'boss':
+      stageBoss(seed);
+      break;
+    case 'path':
+      stagePath(seed);
+      break;
+    case 'shop':
+      stageRoom('shop', seed);
+      break;
+    case 'camp':
+      stageRoom('camp', seed);
+      break;
+    case 'omen':
+      stageRoom('omen', seed);
       break;
     case 'victory':
       stageVictory(seed);
@@ -233,6 +383,9 @@ export function stageShot(name, seed = 7) {
   }
   state.time = Math.max(state.time, 1.35);
   state.toast = '';
+  // A frozen frame does not age its floaters, so a long turn leaves a pile of them stacked on the
+  // intent badges. Keep only the ones sitting in open board where they can still be read.
+  state.floaters = state.floaters.filter((item) => item.y > 150 && item.y < 330).slice(-3);
   return { scene: state.scene, floor: state.floor, combo: state.combo, hand: state.hand.length };
 }
 

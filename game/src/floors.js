@@ -1,18 +1,29 @@
-// The eight floors of the last comb: what waits on each, how many relics a cleared floor pays and
-// the line the HUD prints. Enemy kinds come from enemies.js; this file only arranges them.
+// The eight floors of the last comb, cut into three acts. Each act ends on a boss, so the run has
+// three peaks instead of one and the player can feel how far they have come. Enemy kinds come from
+// enemies.js; this file only arranges them, and says which floor closes an act.
 export const FLOOR_PLAN = [
-  { floor: 1, name: 'THE FIRST NIGHT', enemies: ['wasp'], reward: 'card' },
-  { floor: 2, name: 'CRACKED CELLS', enemies: ['wasp', 'mite'], reward: 'card+relic' },
-  { floor: 3, name: 'HEAVY AIR', enemies: ['bumble'], reward: 'card' },
-  { floor: 4, name: 'THE BROOD GAP', enemies: ['larva', 'wasp'], reward: 'card+relic' },
-  { floor: 5, name: 'THE PLATE LINE', enemies: ['hornet', 'wasp', 'thief'], reward: 'card' },
-  { floor: 6, name: 'SMOKE AND ASH', enemies: ['keeper', 'mite', 'larva'], reward: 'card+relic' },
-  { floor: 7, name: 'THE OUTER RIM', enemies: ['hornet', 'bumble', 'thief'], reward: 'card' },
-  { floor: 8, name: 'THE QUEEN', enemies: ['queen'], reward: 'none' },
+  { floor: 1, act: 1, name: 'THE FIRST NIGHT', enemies: ['wasp'], reward: 'card' },
+  { floor: 2, act: 1, name: 'CRACKED CELLS', enemies: ['wasp', 'mite'], reward: 'card+relic' },
+  { floor: 3, act: 1, name: 'THE HORNET GENERAL', enemies: ['hornet-general'], reward: 'relic', boss: true },
+
+  { floor: 4, act: 2, name: 'SMOKE AND ASH', enemies: ['bumble', 'wasp'], reward: 'card' },
+  { floor: 5, act: 2, name: 'THE PLATE LINE', enemies: ['hornet', 'mite', 'thief'], reward: 'card+relic' },
+  { floor: 6, act: 2, name: 'THE WAX WARDEN', enemies: ['wax-warden'], reward: 'relic', boss: true },
+
+  { floor: 7, act: 3, name: 'THE OUTER RIM', enemies: ['keeper', 'larva', 'thief'], reward: 'card+relic' },
+  { floor: 8, act: 3, name: 'THE QUEEN', enemies: ['queen'], reward: 'none', boss: true },
 ];
 
+export const ACTS = [
+  { act: 1, name: 'THE FIRST NIGHT', tag: 'where the ledger opens', first: 1, bossFloor: 3 },
+  { act: 2, name: 'THE DROUGHT', tag: 'where the wax runs low', first: 4, bossFloor: 6 },
+  { act: 3, name: 'THE INNER COURT', tag: 'where she keeps the ledger', first: 7, bossFloor: 8 },
+];
+
+export const LAST_FLOOR = FLOOR_PLAN.length;
+
 export function floorConfig(floor) {
-  return FLOOR_PLAN[Math.min(FLOOR_PLAN.length, Math.max(1, floor)) - 1];
+  return FLOOR_PLAN[Math.min(LAST_FLOOR, Math.max(1, floor)) - 1];
 }
 
 export function floorEnemies(floor) {
@@ -20,8 +31,7 @@ export function floorEnemies(floor) {
 }
 
 export function floorPaysRelic(floor) {
-  const config = floorConfig(floor);
-  return config.reward.includes('relic');
+  return floorConfig(floor).reward.includes('relic');
 }
 
 export function floorPaysCard(floor) {
@@ -29,13 +39,30 @@ export function floorPaysCard(floor) {
 }
 
 export function isLastFloor(floor) {
-  return floor >= FLOOR_PLAN.length;
+  return floor >= LAST_FLOOR;
+}
+
+export function isBossFloor(floor) {
+  return Boolean(floorConfig(floor).boss);
+}
+
+export function actOf(floor) {
+  const act = floorConfig(floor).act;
+  return ACTS[act - 1];
 }
 
 export function floorTitle(floor) {
-  return `FLOOR ${floor} / ${FLOOR_PLAN.length}`;
+  return `FLOOR ${floor} / ${LAST_FLOOR}`;
 }
 
 export function floorName(floor) {
   return floorConfig(floor).name;
+}
+
+/** What the HUD prints instead of a bare floor number: the act, and how far into it this is. */
+export function floorLine(floor) {
+  const act = actOf(floor);
+  const into = floor - act.first + 1;
+  const length = act.bossFloor - act.first + 1;
+  return `ACT ${act.act} · ${act.name} · ${into} OF ${length}`;
 }

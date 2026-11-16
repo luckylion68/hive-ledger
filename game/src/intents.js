@@ -4,14 +4,14 @@ import { ENEMY_KINDS } from './enemies.js';
 import { state } from './state.js';
 
 export const INTENT_META = {
-  attack: { icon: 'sword', label: 'ATTACK', tint: '#d8462f' },
-  block: { icon: 'shield', label: 'HARDEN', tint: '#7fa6b8' },
-  heal: { icon: 'cross', label: 'HEAL', tint: '#b8d94a' },
-  poison: { icon: 'drop', label: 'POISON', tint: '#b8d94a' },
-  smoke: { icon: 'smoke', label: 'SMOKE', tint: '#7fa6b8' },
-  steal: { icon: 'hand', label: 'STEAL', tint: '#a86a9c' },
-  grow: { icon: 'grow', label: 'GROW', tint: '#ffd479' },
-  unknown: { icon: 'alert', label: 'UNKNOWN', tint: '#8a7350' },
+  attack: { icon: 'sword', label: 'ATTACK', short: '', tint: '#d8462f' },
+  block: { icon: 'shield', label: 'HARDEN', short: 'GUARD', tint: '#7fa6b8' },
+  heal: { icon: 'cross', label: 'HEAL', short: 'HEAL', tint: '#b8d94a' },
+  poison: { icon: 'drop', label: 'POISON', short: 'VENOM', tint: '#b8d94a' },
+  smoke: { icon: 'smoke', label: 'SMOKE', short: 'SMOKE', tint: '#7fa6b8' },
+  steal: { icon: 'hand', label: 'STEAL', short: 'STEAL', tint: '#a86a9c' },
+  grow: { icon: 'grow', label: 'GROW', short: 'GROW', tint: '#ffd479' },
+  unknown: { icon: 'alert', label: 'UNKNOWN', short: 'ODD', tint: '#8a7350' },
 };
 
 function phaseOf(enemy) {
@@ -42,13 +42,16 @@ export function chooseIntent(enemy) {
   const step = cycle[enemy.step % cycle.length];
   enemy.step += 1;
   let value = step.value;
-  if (step.type === 'attack') value += enemy.strength;
+  // strength is what it has grown into; bite is what the difficulty sat down with
+  if (step.type === 'attack') value += enemy.strength + (enemy.bite || 0);
+  if (step.type === 'poison') value += Math.round((enemy.bite || 0) / 2);
   enemy.intent = {
     type: step.type,
     value,
     icon: (INTENT_META[step.type] || INTENT_META.unknown).icon,
     tint: (INTENT_META[step.type] || INTENT_META.unknown).tint,
     label: (INTENT_META[step.type] || INTENT_META.unknown).label,
+    short: (INTENT_META[step.type] || INTENT_META.unknown).short,
   };
   return enemy.intent;
 }

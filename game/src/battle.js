@@ -4,7 +4,7 @@ import { RULES } from './config.js';
 import { state, bumpStat, toast, resetRun } from './state.js';
 import { createRng } from './random.js';
 import { buildDeck, drawCards, discardHand, discardCard } from './deck.js';
-import { makeEnemyLine } from './enemies.js';
+import { makeEnemyLine, ENEMY_KINDS } from './enemies.js';
 import { rollIntents, chooseIntent } from './intents.js';
 import { applyEffect } from './card-effects.js';
 import {
@@ -26,21 +26,40 @@ import {
 } from './hive.js';
 import { STARTER_DECK } from './cards.js';
 import { floorEnemies, floorName } from './floors.js';
+import { ascensionOf } from './ascension.js';
 import { playSound } from './audio.js';
 import { onFloorCleared, onDefeat } from './scenes.js';
 
-export function startRun(seed, startingRelics = []) {
+export function startRun(seed, startingRelics = [], ascension = 0) {
   resetRun(seed);
+  state.ascension = ascension;
   state.rng = createRng(seed);
+  const sitting = ascensionOf(ascension);
+  state.swarmMax = Math.max(8, RULES.startSwarm + sitting.startSwarm);
+  state.swarm = state.swarmMax;
   state.deck = buildDeck(STARTER_DECK);
   state.relics = [];
   for (const id of startingRelics) grantRelic(id);
   startBattle(1);
 }
 
-export function startBattle(floor) {
+export function startBattle(floor, opts = {}) {
   state.floor = floor;
-  state.enemies = makeEnemyLine(floorEnemies(floor), floor);
+  // last floor's numbers must not hang over this one's opening frame
+  state.floaters = [];
+  const sitting = ascensionOf(state.ascension);
+  // a raid is one hardened raider, not the whole floor made twice as mean: the point of the door is
+  // that it costs more than a hunt, not that it ends the run
+  let line = floorEnemies(floor);
+  if (opts.elite) {
+    const heaviest = line.slice().sort((a, b) => (ENEMY_KINDS[b] ? ENEMY_KINDS[b].hp : 0) - (ENEMY_KINDS[a] ? ENEMY_KINDS[a].hp : 0))[0];
+    line = heaviest ? [heaviest] : line;
+  }
+  state.enemies = makeEnemyLine(line, floor, {
+    hpScale: sitting.hpScale,
+    bite: sitting.damageBonus,
+    elite: Boolean(opts.elite),
+  });
   state.target = 0;
   state.phase = 'player';
   state.turn = 1;
@@ -55,10 +74,11 @@ export function startBattle(floor) {
   state.drawPile = state.rng.shuffle(state.deck.slice());
   state.discardPile = [];
   state.floaters = [];
+  state.nextFloorElite = Boolean(opts.elite);
   relicOnCombatStart();
   rollIntents();
   drawHand();
-  toast(floorName(floor));
+  toast(opts.elite ? `ELITE · ${floorName(floor)}` : floorName(floor));
   state.scene = 'battle';
 }
 
@@ -202,10 +222,11 @@ export function endTurn() {
 
 /** Used by the title screen and the restart key: a clean run from a fresh seed. */
 export function restart(seed) {
+  const sitting = ascensionOf(state.ascension);
   state.nectarMax = RULES.startNectar;
-  state.swarm = RULES.startSwarm;
-  state.swarmMax = RULES.startSwarm;
-  startRun(seed);
+  state.swarmMax = Math.max(8, RULES.startSwarm + sitting.startSwarm);
+  state.swarm = state.swarmMax;
+  startRun(seed, [], state.ascension);
 }
 
 export function buildSummary() {

@@ -7,6 +7,7 @@ import { goTitle } from './scenes.js';
 import { stageShot } from './shots.js';
 import { drawBattleScene, drawRewardScene, drawEndScene } from './render-battle.js';
 import { drawTitleScene } from './render-cover.js';
+import { drawPathScene, drawShopScene, drawCampScene, drawOmenScene } from './render-run.js';
 import { initAudio } from './audio.js';
 
 const canvas = document.getElementById('stage');
@@ -36,6 +37,18 @@ function paint() {
     case 'reward':
       drawRewardScene(ctx);
       break;
+    case 'path':
+      drawPathScene(ctx);
+      break;
+    case 'shop':
+      drawShopScene(ctx);
+      break;
+    case 'camp':
+      drawCampScene(ctx);
+      break;
+    case 'omen':
+      drawOmenScene(ctx);
+      break;
     case 'end':
       drawEndScene(ctx);
       break;
@@ -57,11 +70,28 @@ function paint() {
 function announceState() {
   if (!announce) return;
   if (state.scene === 'title') {
-    announce.textContent = `HIVE LEDGER. Best floor ${state.bestFloor} of 8. Click to begin.`;
+    announce.textContent = `HIVE LEDGER. Best floor ${state.bestFloor} of 8. Press 1 to 4 to pick a difficulty, then click to begin.`;
     return;
   }
   if (state.scene === 'reward') {
     announce.textContent = `Floor ${state.floor} cleared. Choose one of ${state.rewardChoices.length} cards, or skip for nectar.`;
+    return;
+  }
+  if (state.scene === 'path') {
+    const doors = state.pathOptions.map((node) => node.name).join(', ');
+    announce.textContent = `Floor ${state.floor} cleared. Three doors: ${doors}. Press 1 to 3.`;
+    return;
+  }
+  if (state.scene === 'shop') {
+    announce.textContent = `Market with ${state.coins} amber. ${state.shopStock.length} slots. Enter leaves.`;
+    return;
+  }
+  if (state.scene === 'camp') {
+    announce.textContent = 'Camp. Mend the swarm, feed the comb, or temper a card. One choice only.';
+    return;
+  }
+  if (state.scene === 'omen') {
+    announce.textContent = state.omen ? `${state.omen.name}. ${state.omen.text} Two answers.` : 'Omen.';
     return;
   }
   if (state.scene === 'end') {
@@ -112,11 +142,15 @@ window.addEventListener('resize', () => {
 
 fit();
 state.bestFloor = 6;
+// a read-only handle for the screenshot runner and for anyone who wants to check a state by hand
+window.__hive = state;
 
 if (shot) {
   const seed = Number(params.get('seed') || 7) || 7;
   state.fade = 0;
   const staged = stageShot(shot, seed);
+  // a staged frame still answers the pointer, so a screenshot position can be played with by hand
+  bindInput(canvas);
   window.__shotName = shot;
   window.__shotState = staged;
   paint();

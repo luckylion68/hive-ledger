@@ -40,7 +40,28 @@ export const state = {
     floorsCleared: 0,
     damageTaken: 0,
     waxBuilt: 0,
+    purchases: 0,
+    omensTaken: 0,
+    elitesFelled: 0,
   },
+  // the run's shape, outside the fight: which sitting, which door, what it cost to open it
+  ascension: 0,
+  act: 1,
+  coins: 0,
+  pathOptions: [],
+  pathPicked: -1,
+  nodeLog: [],
+  shopStock: [],
+  shopHover: -1,
+  omen: null,
+  omenResult: '',
+  omenHover: -1,
+  campChoices: [],
+  campHover: -1,
+  campPicked: -1,
+  campDone: false,
+  nextFloorElite: false,
+  bossBanner: '',
   floaters: [],
   shake: 0,
   time: 0,
@@ -71,7 +92,17 @@ export function bumpStat(key, amount = 1) {
 }
 
 export function addFloater(text, x, y, color, size = 26) {
-  state.floaters.push({ text, x, y, color, size, age: 0, life: 1.05, drift: -0.6 + Math.random() * 1.2 });
+  // Two things can land on the player in one breath, and both want to be read. Stack a new number
+  // above the young one it would otherwise sit on, so the pair reads as a tally rather than a smear.
+  let top = y;
+  for (let guard = 0; guard < 5; guard += 1) {
+    const clash = state.floaters.some(
+      (item) => item.age < 0.4 && Math.abs(item.x - x) < 46 && Math.abs(item.y - top) < 24
+    );
+    if (!clash) break;
+    top -= 24;
+  }
+  state.floaters.push({ text, x, y: top, color, size, age: 0, life: 1.05, drift: -0.6 + Math.random() * 1.2 });
   if (state.floaters.length > 14) state.floaters.shift();
 }
 
@@ -136,7 +167,26 @@ export function resetRun(seed) {
     floorsCleared: 0,
     damageTaken: 0,
     waxBuilt: 0,
+    purchases: 0,
+    omensTaken: 0,
+    elitesFelled: 0,
   };
+  state.coins = 0;
+  state.act = 1;
+  state.pathOptions = [];
+  state.pathPicked = -1;
+  state.nodeLog = [];
+  state.shopStock = [];
+  state.shopHover = -1;
+  state.omen = null;
+  state.omenResult = '';
+  state.omenHover = -1;
+  state.campChoices = [];
+  state.campHover = -1;
+  state.campPicked = -1;
+  state.campDone = false;
+  state.nextFloorElite = false;
+  state.bossBanner = '';
   state.uid = 1;
   void VIEW;
 }

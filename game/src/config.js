@@ -76,7 +76,7 @@ export const LAYOUT = Object.freeze({
   combo: { x: 1040, y: 22, w: 120, h: 28 },
   endHint: { x: 1252, baseline: 41 },
   enemy: { cx: [320, 640, 960], cy: 205, r: 54, nameY: 116, intentY: 86, hpDy: 64, hpTextDy: 84, tagDy: 94, phaseDy: 112 },
-  keeper: { x: 140, y: 362, r: 40, labelY: 412 },
+  keeper: { x: 140, y: 308, r: 32, labelY: 350 },
   bees: [
     { x: 228, y: 340 },
     { x: 272, y: 356 },

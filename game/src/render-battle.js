@@ -20,7 +20,7 @@ import {
 import { drawHud } from './render-hud.js';
 import { drawCard, drawRewardCard } from './render-cards.js';
 import { rewardCards } from './scenes.js';
-import { floorTitle, floorName, floorEnemies } from './floors.js';
+import { floorTitle, floorName, floorEnemies, isBossFloor } from './floors.js';
 import { ENEMY_KINDS } from './enemies.js';
 import { CARD_W, CARD_H } from './render-cards.js';
 import { CARDS_BY_ID } from './cards.js';
@@ -205,8 +205,8 @@ function intentBadge(ctx, enemy, cx, y) {
     mono: true,
     color: PALETTE.wax,
   });
-  if (enemy.intent.type !== 'attack') {
-    paintText(ctx, enemy.intent.label.slice(0, 3), cx + 6, y - h / 2 - 4, {
+  if (enemy.intent.type !== 'attack' && enemy.intent.short) {
+    paintText(ctx, enemy.intent.short, cx + 6, y - h / 2 - 4, {
       align: 'center',
       size: 8,
       weight: 700,
@@ -297,13 +297,15 @@ function drawEnemy(ctx, enemy, index, count) {
   });
 
   if (enemy.boss && !dead) {
-    paintText(ctx, `PHASE ${enemy.phase}`, cx, cy + LAYOUT.enemy.phaseDy, {
-      align: 'center',
-      size: 9,
-      weight: 700,
-      color: PALETTE.blood,
-      spacing: 2,
-    });
+    // three pips on the name line: the keeper changes what it does twice before it dies, and the
+    // board has no room left under the body to say so
+    const nameW = textWidth(ctx, enemy.name, 15, 700, false, 2);
+    for (let step = 0; step < 3; step += 1) {
+      ctx.beginPath();
+      ctx.arc(cx + nameW / 2 + 16 + step * 11, LAYOUT.enemy.nameY - 4, 3.4, 0, Math.PI * 2);
+      ctx.fillStyle = step < enemy.phase ? PALETTE.blood : 'rgba(138, 115, 80, 0.42)';
+      ctx.fill();
+    }
   }
 
   statusTags(ctx, enemy, cx, cy + LAYOUT.enemy.tagDy);
@@ -334,7 +336,7 @@ function drawKeeperArea(ctx) {
     color: PALETTE.dim,
     spacing: 3,
   });
-  paintText(ctx, `POISON ${state.poison}`, keeper.x, 396, {
+  paintText(ctx, `POISON ${state.poison}`, keeper.x, 366, {
     align: 'center',
     size: 10,
     color: state.poison > 0 ? '#b8d94a' : 'rgba(138,115,80,0.4)',
@@ -538,7 +540,13 @@ function drawLedger(ctx) {
     {
       label: state.floor >= RULES.floors ? 'THE LAST COMB' : 'NEXT FLOOR',
       value: state.floor >= RULES.floors ? 'THE QUEEN WAITS' : floorName(nextFloor),
-      note: state.floor >= RULES.floors ? 'NO RELIEF BEYOND' : `${floorEnemies(nextFloor).length} FOES`,
+      note:
+        state.floor >= RULES.floors
+          ? 'NO RELIEF BEYOND'
+          : isBossFloor(nextFloor)
+            ? 'BOSS FLOOR'
+            : `${floorEnemies(nextFloor).length} ${floorEnemies(nextFloor).length === 1 ? 'FOE' : 'FOES'}`,
+      boss: isBossFloor(nextFloor),
       color: PALETTE.honey,
     },
   ];
@@ -765,6 +773,22 @@ export function drawEndScene(ctx) {
     shadow: 'rgba(0,0,0,0.85)',
     shadowBlur: 24,
   });
+  if (state.nodeLog.length) {
+    const counts = state.nodeLog.reduce((map, id) => {
+      map[id] = (map[id] || 0) + 1;
+      return map;
+    }, {});
+    const line = Object.keys(counts)
+      .map((id) => `${counts[id]}× ${id.toUpperCase()}`)
+      .join('   ·   ');
+    paintText(ctx, `THE ROAD   ${line}`, 640, 220, {
+      align: 'center',
+      size: 13,
+      weight: 700,
+      color: 'rgba(201, 168, 106, 0.8)',
+      spacing: 1,
+    });
+  }
   paintText(ctx, won ? 'EIGHT FLOORS, ONE LEDGER, NO DEBTS' : `YOU HELD UNTIL ${floorTitle(Math.max(1, state.floor))}`, 640, 194, {
     align: 'center',
     size: 16,

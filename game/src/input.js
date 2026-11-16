@@ -3,11 +3,27 @@
 import { HIT, LAYOUT, RULES } from './config.js';
 import { state } from './state.js';
 import { playCard, endTurn } from './battle.js';
-import { beginRun, restartRun, takeReward, skipReward, goTitle, rewardCards } from './scenes.js';
+import {
+  beginRun,
+  restartRun,
+  takeReward,
+  skipReward,
+  goTitle,
+  rewardCards,
+  choosePath,
+  leaveNode,
+  buyShopSlot,
+  takeCampMend,
+  takeCampTemper,
+  takeCampFeed,
+  answerOmen,
+} from './scenes.js';
 import { selectTarget } from './card-effects.js';
 import { initAudio, playSound, toggleMute } from './audio.js';
 import { enemySlotX, handCardRect } from './render-battle.js';
 import { CARD_W, CARD_H } from './render-cards.js';
+import { pathCardRect, shopSlotRect, shopLeaveRect, campDoorRect, campCardRect, omenOptionRect, omenContinueRect } from './render-run.js';
+import { coverSittingRect } from './render-cover.js';
 
 function toLogical(canvas, event) {
   const rect = canvas.getBoundingClientRect();
@@ -67,10 +83,51 @@ function refreshHover(point) {
   if (state.scene === 'battle') {
     state.hoverCard = handIndexAt(point);
     state.hoverEnd = inside(point, HIT.endTurn);
-  } else if (state.scene === 'reward') {
+    return;
+  }
+  if (state.scene === 'reward') {
     state.hoverCard = rewardIndexAt(point);
     state.hoverSkip = inside(point, HIT.skip) || (point.y > 586 && point.y < 626);
-  } else if (state.scene === 'end') {
+    return;
+  }
+  if (state.scene === 'path') {
+    state.hoverCard = -1;
+    for (let i = 0; i < state.pathOptions.length; i += 1) {
+      if (inside(point, pathCardRect(i))) state.hoverCard = i;
+    }
+    return;
+  }
+  if (state.scene === 'shop') {
+    state.shopHover = -1;
+    for (let i = 0; i < state.shopStock.length; i += 1) {
+      if (inside(point, shopSlotRect(i))) state.shopHover = i;
+    }
+    if (inside(point, shopLeaveRect())) state.shopHover = 99;
+    return;
+  }
+  if (state.scene === 'camp') {
+    state.campHover = -1;
+    for (let i = 0; i < 3; i += 1) {
+      if (inside(point, campDoorRect(i))) state.campHover = i;
+    }
+    for (let i = 0; i < state.campChoices.length; i += 1) {
+      if (inside(point, campCardRect(i))) state.campHover = 30 + i;
+    }
+    if (state.campDone && inside(point, shopLeaveRect())) state.campHover = 99;
+    return;
+  }
+  if (state.scene === 'omen') {
+    state.omenHover = -1;
+    if (state.omenResult) {
+      if (inside(point, omenContinueRect())) state.omenHover = 99;
+      return;
+    }
+    for (let i = 0; i < 2; i += 1) {
+      if (inside(point, omenOptionRect(i))) state.omenHover = i;
+    }
+    return;
+  }
+  if (state.scene === 'end') {
     state.hoverPlayAgain = inside(point, HIT.playAgain);
   }
 }
@@ -79,7 +136,15 @@ function click(point) {
   initAudio();
   switch (state.scene) {
     case 'title': {
-      beginRun(freshSeed());
+      // the sitting rows are buttons, not decoration: pressing one picks the difficulty
+      for (let i = 0; i < 4; i += 1) {
+        if (inside(point, coverSittingRect(i))) {
+          state.ascension = i;
+          playSound('click');
+          return;
+        }
+      }
+      beginRun(freshSeed(), state.ascension);
       playSound('click');
       return;
     }
@@ -113,6 +178,66 @@ function click(point) {
       }
       return;
     }
+    case 'path': {
+      for (let i = 0; i < state.pathOptions.length; i += 1) {
+        if (inside(point, pathCardRect(i))) {
+          choosePath(i);
+          return;
+        }
+      }
+      return;
+    }
+    case 'shop': {
+      for (let i = 0; i < state.shopStock.length; i += 1) {
+        if (inside(point, shopSlotRect(i))) {
+          buyShopSlot(i);
+          return;
+        }
+      }
+      if (inside(point, shopLeaveRect())) {
+        leaveNode();
+        return;
+      }
+      return;
+    }
+    case 'camp': {
+      for (let i = 0; i < 3; i += 1) {
+        if (inside(point, campDoorRect(i))) {
+          if (state.campDone) return;
+          if (i === 0) takeCampMend();
+          else if (i === 1) takeCampFeed();
+          else {
+            state.toast = 'Pick a card below';
+            state.toastAge = 0;
+          }
+          return;
+        }
+      }
+      for (let i = 0; i < state.campChoices.length; i += 1) {
+        if (inside(point, campCardRect(i))) {
+          takeCampTemper(i);
+          return;
+        }
+      }
+      if (state.campDone && inside(point, shopLeaveRect())) {
+        leaveNode();
+        return;
+      }
+      return;
+    }
+    case 'omen': {
+      if (state.omenResult) {
+        if (inside(point, omenContinueRect())) leaveNode();
+        return;
+      }
+      for (let i = 0; i < 2; i += 1) {
+        if (inside(point, omenOptionRect(i))) {
+          answerOmen(i);
+          return;
+        }
+      }
+      return;
+    }
     case 'end': {
       if (inside(point, HIT.playAgain)) {
         restartRun(freshSeed());
@@ -137,9 +262,14 @@ function key(event) {
     return;
   }
   if (state.scene === 'title') {
+    const sitting = Number(tag);
+    if (Number.isInteger(sitting) && sitting >= 1 && sitting <= 4) {
+      state.ascension = sitting - 1;
+      return;
+    }
     if (tag === 'Enter' || tag === ' ' || tag === 'r' || tag === 'R') {
       initAudio();
-      beginRun(freshSeed());
+      beginRun(freshSeed(), state.ascension);
     }
     return;
   }
@@ -169,6 +299,55 @@ function key(event) {
     if (tag === 's' || tag === 'S' || tag === ' ') {
       event.preventDefault();
       skipReward();
+    }
+    return;
+  }
+  if (state.scene === 'path') {
+    const digit = Number(tag);
+    if (Number.isInteger(digit) && digit >= 1 && digit <= 3) choosePath(digit - 1);
+    return;
+  }
+  if (state.scene === 'shop') {
+    const digit = Number(tag);
+    if (Number.isInteger(digit) && digit >= 1 && digit <= 9) {
+      if (digit - 1 < state.shopStock.length) buyShopSlot(digit - 1);
+      return;
+    }
+    if (tag === 'Enter' || tag === ' ') {
+      event.preventDefault();
+      leaveNode();
+    }
+    return;
+  }
+  if (state.scene === 'camp') {
+    const digit = Number(tag);
+    if (Number.isInteger(digit) && digit >= 1 && digit <= 3) {
+      if (state.campDone) return;
+      if (digit === 1) takeCampMend();
+      else if (digit === 2) takeCampFeed();
+      else {
+        state.toast = 'Pick a card with the mouse';
+        state.toastAge = 0;
+      }
+      return;
+    }
+    if (tag === 'Enter' || tag === ' ') {
+      event.preventDefault();
+      if (state.campDone) leaveNode();
+    }
+    return;
+  }
+  if (state.scene === 'omen') {
+    const digit = Number(tag);
+    if (state.omenResult) {
+      if (tag === 'Enter' || tag === ' ') {
+        event.preventDefault();
+        leaveNode();
+      }
+      return;
+    }
+    if (Number.isInteger(digit) && (digit === 1 || digit === 2)) {
+      answerOmen(digit - 1);
     }
     return;
   }

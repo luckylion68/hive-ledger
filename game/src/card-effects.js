@@ -1,5 +1,6 @@
 // What each effect key actually does. One function per effect, all of them going through hive.js,
-// so a card is a row of data in cards.js plus one short entry here.
+// so a card is a row of data in cards.js plus one short entry here. A tempered card (the camp's
+// upgrade) reads the same table with every number two higher, which is why nothing here is a literal.
 import { RULES } from './config.js';
 import { state } from './state.js';
 import {
@@ -19,6 +20,14 @@ import {
 import { drawCards } from './deck.js';
 import { relicDamageBonus } from './relics.js';
 
+/** The card being resolved right now, so v() can see whether it was tempered at the camp. */
+let activeCard = null;
+
+/** Every number on a card, plus the temper bonus. Keeping it in one place is what makes upgrades safe. */
+export function v(base) {
+  return base + (activeCard && activeCard.plus ? 2 : 0);
+}
+
 /** The foe a damage card lands on: the one you clicked, or the first one still standing. */
 export function currentTarget() {
   const chosen = state.enemies[state.target];
@@ -36,56 +45,56 @@ export function selectTarget(index) {
 }
 
 function stingDamage(base) {
-  return base + relicDamageBonus('sting');
+  return v(base) + relicDamageBonus('sting');
 }
 
 const EFFECTS = {
   // GATHER
   sip() {
-    gainNectar(2);
+    gainNectar(v(2));
   },
   nectarRun() {
-    gainNectar(1);
+    gainNectar(v(1));
     drawCards(1);
   },
   deepDraw() {
     drawCards(2);
   },
   honeyJar() {
-    gainNectar(3);
-    gainWax(3);
+    gainNectar(v(3));
+    gainWax(v(3));
   },
   swarmSense() {
     drawCards(2);
     hurtSwarm(1, { pierce: true });
   },
   feast() {
-    gainNectar(4);
+    gainNectar(v(4));
     drawCards(1);
   },
 
   // BUILD
   waxSeal() {
-    gainWax(6);
+    gainWax(v(6));
   },
   combWall() {
-    gainWax(10);
+    gainWax(v(10));
   },
   raiseCap() {
     if (state.nectarMax < RULES.nectarCap) {
       state.nectarMax += 1;
       gainNectar(1);
     } else {
-      gainWax(6);
+      gainWax(v(6));
     }
-    gainWax(2);
+    gainWax(v(2));
   },
   cellForge() {
-    gainWax(4);
-    gainNectar(1);
+    gainWax(v(4));
+    gainNectar(v(1));
   },
   ledgerStone() {
-    gainWax(3);
+    gainWax(v(3));
     drawCards(1);
   },
 
@@ -95,39 +104,39 @@ const EFFECTS = {
   },
   nurse() {
     spawnBees(1);
-    gainWax(3);
+    gainWax(v(3));
   },
   hatchBurst() {
     spawnBees(2);
   },
   swarmCall() {
     spawnBees(2);
-    healSwarm(4);
+    healSwarm(v(4));
   },
   royalJelly() {
-    boostBees(2);
+    boostBees(v(2));
     spawnBees(1);
   },
 
   // GUARD
   brace() {
-    gainWax(5);
+    gainWax(v(5));
   },
   sentry() {
-    gainWax(3);
-    hitEnemy(currentTarget(), 3);
+    gainWax(v(3));
+    hitEnemy(currentTarget(), v(3));
   },
   guardDrill() {
-    hitEnemy(currentTarget(), 4);
-    gainWax(3);
+    hitEnemy(currentTarget(), v(4));
+    gainWax(v(3));
   },
   deflect() {
     hitEnemy(currentTarget(), Math.max(2, Math.floor(state.wax / 2)));
-    gainWax(2);
+    gainWax(v(2));
   },
   hiveShield() {
-    gainWax(8);
-    weakenEnemies(2);
+    gainWax(v(8));
+    weakenEnemies(v(2));
   },
 
   // STING
@@ -141,7 +150,7 @@ const EFFECTS = {
   venom() {
     const target = currentTarget();
     hitEnemy(target, stingDamage(3));
-    if (target) poisonEnemy(target, 4);
+    if (target) poisonEnemy(target, v(4));
   },
   pierce() {
     hitEnemy(currentTarget(), stingDamage(5), { pierce: true });
@@ -158,7 +167,12 @@ const EFFECTS = {
 export function applyEffect(card) {
   const effect = EFFECTS[card.fx];
   if (!effect) throw new Error(`no effect for ${card.fx}`);
-  effect(card);
+  activeCard = card;
+  try {
+    effect(card);
+  } finally {
+    activeCard = null;
+  }
 }
 
 export function effectCount() {
