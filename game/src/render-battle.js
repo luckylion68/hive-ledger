@@ -487,8 +487,8 @@ function drawRelicPanel(ctx) {
 function footHint(ctx, text) {
   paintText(ctx, text, 640, LAYOUT.footHint.y, {
     align: 'center',
-    size: 11,
-    color: PALETTE.faint,
+    size: 12,
+    color: PALETTE.dim,
   });
 }
 
@@ -655,13 +655,13 @@ export function drawRewardScene(ctx) {
   cards.forEach((card, index) => {
     const x = LAYOUT.reward.startX + index * (LAYOUT.reward.cardW + LAYOUT.reward.gap);
     drawRewardCard(ctx, card, index, x, LAYOUT.reward.cardY, LAYOUT.reward.cardW, LAYOUT.reward.cardH, hoverIndex === index);
-    paintText(ctx, RARITY[card.rarity].label, x + LAYOUT.reward.cardW / 2, LAYOUT.reward.cardY - 12, {
+    paintText(ctx, RARITY[card.rarity].label, x + LAYOUT.reward.cardW / 2, LAYOUT.reward.cardY - 18, {
       align: 'center',
-      size: 10,
+      size: 13,
       weight: 700,
       color: RARITY[card.rarity].glow,
-      spacing: 3,
-      alpha: hoverIndex === index ? 1 : 0.75,
+      spacing: 4,
+      alpha: hoverIndex === index ? 1 : 0.9,
     });
   });
 
@@ -765,9 +765,9 @@ export function drawEndScene(ctx) {
     shadow: 'rgba(0,0,0,0.85)',
     shadowBlur: 24,
   });
-  paintText(ctx, won ? 'EIGHT FLOORS, ONE LEDGER, NO DEBTS' : `YOU HELD UNTIL ${floorTitle(Math.max(1, state.floor))}`, 640, 216, {
+  paintText(ctx, won ? 'EIGHT FLOORS, ONE LEDGER, NO DEBTS' : `YOU HELD UNTIL ${floorTitle(Math.max(1, state.floor))}`, 640, 194, {
     align: 'center',
-    size: 12,
+    size: 16,
     color: PALETTE.dim,
     spacing: 4,
   });
@@ -785,10 +785,10 @@ export function drawEndScene(ctx) {
     const row = Math.floor(index / 3);
     const x = LAYOUT.end.statXs[col];
     const y = LAYOUT.end.statYs[row];
-    paintText(ctx, key, x, y, { align: 'center', size: 11, color: '#a08a5f', spacing: 3 });
-    paintText(ctx, value, x, y + 40, {
+    paintText(ctx, key, x, y, { align: 'center', size: 13, color: '#b09163', spacing: 3 });
+    paintText(ctx, value, x, y + 42, {
       align: 'center',
-      size: 30,
+      size: 36,
       weight: 900,
       mono: true,
       color: PALETTE.wax,
@@ -796,9 +796,42 @@ export function drawEndScene(ctx) {
     ctx.strokeStyle = 'rgba(242,181,68,0.3)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(x - 92, y + 58);
-    ctx.lineTo(x + 92, y + 58);
+    ctx.moveTo(x - 96, y + 62);
+    ctx.lineTo(x + 96, y + 62);
     ctx.stroke();
+  });
+
+  // the run's grade: one letter, and what earned it
+  const grade = won
+    ? state.swarm >= 60
+      ? 'S'
+      : state.swarm >= 30
+        ? 'A'
+        : state.swarm >= 10
+          ? 'B'
+          : 'C'
+    : state.stats.floorsCleared >= 6
+      ? 'C'
+      : state.stats.floorsCleared >= 4
+        ? 'D'
+        : 'E';
+  const gradeNote = won
+    ? `CARRIED ${state.swarm} SWARM OUT OF THE DARK`
+    : `FELLED ${state.stats.enemiesFelled} RAIDERS OVER ${state.stats.floorsCleared} FLOORS`;
+  const gradeW = textWidth(ctx, gradeNote, 17, 700, false, 1.5);
+  const gradeCx = 640 - (gradeW + 74) / 2 + 22;
+  hexBox(ctx, gradeCx, LAYOUT.end.rankY, 24, 'rgba(36,23,5,0.95)', won ? PALETTE.honey : PALETTE.blood, 1.6);
+  paintText(ctx, grade, gradeCx, LAYOUT.end.rankY + 9, {
+    align: 'center',
+    size: 26,
+    weight: 900,
+    color: won ? PALETTE.honey : '#e8604a',
+  });
+  paintText(ctx, gradeNote, gradeCx + 40, LAYOUT.end.rankY + 7, {
+    size: 17,
+    weight: 700,
+    color: won ? PALETTE.body : '#c98d7a',
+    spacing: 1.5,
   });
 
   const button = LAYOUT.end.button;
@@ -818,12 +851,12 @@ export function drawEndScene(ctx) {
   });
   paintText(ctx, 'R restarts at any time', 640, LAYOUT.end.hintY, {
     align: 'center',
-    size: 12,
+    size: 14,
     color: PALETTE.faint,
   });
-  paintText(ctx, `PERSONAL BEST · FLOOR ${state.bestFloor} / ${RULES.floors}`, 640, 656, {
+  paintText(ctx, `PERSONAL BEST · FLOOR ${state.bestFloor} / ${RULES.floors}`, 640, 642, {
     align: 'center',
-    size: 11,
+    size: 13,
     color: PALETTE.dim,
     spacing: 3,
     mono: true,
@@ -835,16 +868,16 @@ export function drawEndScene(ctx) {
   const relicW = carried * 34;
   const relicX = 640 - (relicW + labelW) / 2 + 17;
   if (carried) {
-    paintText(ctx, 'CARRIED', relicX - 22, 690, {
+    paintText(ctx, 'CARRIED', relicX - 22, 678, {
       align: 'right',
-      size: 10,
+      size: 12,
       color: PALETTE.faint,
       spacing: 2,
     });
     state.relics.forEach((relic, index) => {
       const cx = relicX + index * 34;
-      hexBox(ctx, cx, 686, 13, 'rgba(42,29,12,0.9)', '#c99a4e', 1.2);
-      drawRelicGlyph(ctx, relic.glyph, cx, 686, 8, PALETTE.honey);
+      hexBox(ctx, cx, 684, 14, 'rgba(52,36,15,0.95)', 'rgba(232,196,120,0.85)', 1.4);
+      drawRelicGlyph(ctx, relic.glyph, cx, 684, 8, PALETTE.honey);
     });
   }
   void font;

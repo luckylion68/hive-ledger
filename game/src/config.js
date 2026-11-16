@@ -146,7 +146,7 @@ export const LAYOUT = Object.freeze({
     footY: 656,
   },
   reward: { titleY: 112, subY: 152, cardY: 212, cardW: 200, cardH: 290, startX: 200, gap: 40, skipY: 606 },
-  end: { titleY: 180, statYs: [300, 400], statXs: [300, 640, 980], button: { x: 510, y: 500, w: 260, h: 64 }, hintY: 620 },
+  end: { titleY: 148, statYs: [262, 382], statXs: [300, 640, 980], button: { x: 500, y: 516, w: 280, h: 66 }, hintY: 610, rankY: 478 },
 });
 
 export const HIT = Object.freeze({
