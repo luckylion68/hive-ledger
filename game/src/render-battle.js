@@ -764,12 +764,14 @@ export function drawEndScene(ctx) {
   ctx.fillRect(0, 0, 1280, 720);
   glow(ctx, 640, 330, 460, won ? 'rgba(255,212,121,0.22)' : 'rgba(216,70,47,0.18)', 1);
 
-  paintText(ctx, won ? 'THE HIVE HOLDS' : 'THE COMB IS LOST', 640, LAYOUT.end.titleY, {
+  // The outcome word is the biggest thing on the screen because it is the only thing still legible
+  // when this frame is shrunk into a contact sheet beside three others.
+  paintText(ctx, won ? 'VICTORY' : 'DEFEAT', 640, LAYOUT.end.titleY, {
     align: 'center',
     size: 72,
     weight: 900,
     color: won ? PALETTE.honey : '#e8604a',
-    spacing: 4,
+    spacing: 8,
     shadow: 'rgba(0,0,0,0.85)',
     shadowBlur: 24,
   });
@@ -789,12 +791,18 @@ export function drawEndScene(ctx) {
       spacing: 1,
     });
   }
-  paintText(ctx, won ? 'EIGHT FLOORS, ONE LEDGER, NO DEBTS' : `YOU HELD UNTIL ${floorTitle(Math.max(1, state.floor))}`, 640, 194, {
-    align: 'center',
-    size: 16,
-    color: PALETTE.dim,
-    spacing: 4,
-  });
+  paintText(
+    ctx,
+    won ? 'THE HIVE HOLDS · EIGHT FLOORS · NO DEBTS' : `THE COMB IS LOST · YOU HELD UNTIL ${floorTitle(Math.max(1, state.floor))}`,
+    640,
+    194,
+    {
+      align: 'center',
+      size: 16,
+      color: PALETTE.dim,
+      spacing: 3,
+    }
+  );
 
   const stats = [
     ['FLOORS', `${state.stats.floorsCleared} / ${RULES.floors}`],
