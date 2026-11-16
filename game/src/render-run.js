@@ -8,7 +8,7 @@ import { state } from './state.js';
 import { CARDS_BY_ID } from './cards.js';
 import { RELICS_BY_ID } from './relics.js';
 import { ascensionOf } from './ascension.js';
-import { actOf, floorLine } from './floors.js';
+import { actOf, floorLine, isBossFloor, LAST_FLOOR } from './floors.js';
 
 const NODE_ICON = { hunt: 'sword', raid: 'alert', market: 'hand', camp: 'cross', omen: 'drop' };
 const NODE_TINT = {
@@ -75,6 +75,60 @@ function runStrip(ctx, y) {
   ];
   const text = parts.join('   ·   ');
   paintText(ctx, text, 640, y, { align: 'center', size: 14, weight: 700, color: PALETTE.body, spacing: 1 });
+}
+
+// ---- the climb so far -------------------------------------------------------------------------
+
+/**
+ * The whole road on one line: eight stations, the three keepers ringed in red, everything already
+ * walked in gold. Every room between floors draws it, so a player always knows how far the run has
+ * come without opening anything.
+ */
+function climbStrip(ctx, y) {
+  const x0 = 176;
+  const x1 = 1104;
+  const step = (x1 - x0) / (LAST_FLOOR - 1);
+  const walked = Math.min(state.floor, LAST_FLOOR);
+
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = 'rgba(242, 181, 68, 0.14)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x0, y);
+  ctx.lineTo(x1, y);
+  ctx.stroke();
+  if (walked > 1) {
+    ctx.strokeStyle = 'rgba(242, 181, 68, 0.5)';
+    ctx.beginPath();
+    ctx.moveTo(x0, y);
+    ctx.lineTo(x0 + (walked - 1) * step, y);
+    ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
+
+  for (let floor = 1; floor <= LAST_FLOOR; floor += 1) {
+    const x = x0 + (floor - 1) * step;
+    const here = floor === walked;
+    const gone = floor < walked;
+    const boss = isBossFloor(floor);
+    const r = boss ? 10 : 7;
+    if (here) glow(ctx, x, y, 36, 'rgba(255, 212, 121, 0.45)', 1);
+    hexBox(
+      ctx,
+      x,
+      y,
+      r,
+      here ? PALETTE.wax : gone ? 'rgba(242, 181, 68, 0.7)' : 'rgba(18, 12, 5, 0.92)',
+      boss ? PALETTE.blood : here || gone ? PALETTE.honey : 'rgba(138, 115, 80, 0.55)',
+      boss ? 2 : 1.3
+    );
+    paintText(ctx, String(floor), x, y + 27, {
+      align: 'center',
+      size: 10,
+      weight: 700,
+      color: here ? PALETTE.wax : gone ? 'rgba(201, 168, 106, 0.85)' : 'rgba(138, 115, 80, 0.7)',
+    });
+  }
 }
 
 function amberChip(ctx, x, y, value) {
@@ -175,6 +229,7 @@ export function drawPathScene(ctx) {
     'THREE DOORS',
     state.bossBanner ? `ahead: ${state.bossBanner}` : 'choose what the next floor costs you',
   );
+  climbStrip(ctx, 168);
   state.pathOptions.forEach((node, index) => doorCard(ctx, node, index));
   runStrip(ctx, 606);
   footer(ctx, 'CLICK a door or press 1–3  ·  R restarts the run  ·  M mutes');
@@ -272,6 +327,7 @@ export function drawShopScene(ctx) {
   sideBoard(ctx);
   header(ctx, `FLOOR ${state.floor + 1} AHEAD`, 'THE MARKET', 'amber is the one thing you cannot grow back');
   amberChip(ctx, 1080, 92, state.coins);
+  climbStrip(ctx, 168);
   state.shopStock.forEach((slot, index) => slotFace(ctx, slot, index));
 
   const leave = shopLeaveRect();
