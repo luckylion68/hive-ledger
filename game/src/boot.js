@@ -5,7 +5,8 @@ import { state, advanceEffects } from './state.js';
 import { bindInput } from './input.js';
 import { goTitle } from './scenes.js';
 import { stageShot } from './shots.js';
-import { drawBattleScene, drawTitleScene, drawRewardScene, drawEndScene } from './render-battle.js';
+import { drawBattleScene, drawRewardScene, drawEndScene } from './render-battle.js';
+import { drawTitleScene } from './render-cover.js';
 import { initAudio } from './audio.js';
 
 const canvas = document.getElementById('stage');
