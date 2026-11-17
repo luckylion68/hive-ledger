@@ -523,7 +523,7 @@ function drawLedger(ctx) {
     0
   );
   const holding = alive.filter((enemy) => enemy.intent && enemy.intent.type !== 'attack').length;
-  const nextFloor = Math.min(RULES.floors, state.floor + 1);
+  const nextFloor = state.endless ? state.floor + 1 : Math.min(RULES.floors, state.floor + 1);
   const cells = [
     {
       label: 'INCOMING',
@@ -538,10 +538,10 @@ function drawLedger(ctx) {
       color: PALETTE.wax,
     },
     {
-      label: state.floor >= RULES.floors ? 'THE LAST COMB' : 'NEXT FLOOR',
-      value: state.floor >= RULES.floors ? 'THE QUEEN WAITS' : floorName(nextFloor),
+      label: state.floor >= RULES.floors && !state.endless ? 'THE LAST COMB' : 'NEXT FLOOR',
+      value: state.floor >= RULES.floors && !state.endless ? 'THE QUEEN WAITS' : floorName(nextFloor),
       note:
-        state.floor >= RULES.floors
+        state.floor >= RULES.floors && !state.endless
           ? 'NO RELIEF BEYOND'
           : isBossFloor(nextFloor)
             ? 'BOSS FLOOR'

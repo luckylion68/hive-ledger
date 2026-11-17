@@ -22,7 +22,16 @@ export const ACTS = [
 
 export const LAST_FLOOR = FLOOR_PLAN.length;
 
+const ECHO_NAMES = ['ECHO', 'ECHO II', 'ECHO III', 'ECHO IV', 'ECHO V', 'ECHO VI'];
+
 export function floorConfig(floor) {
+  if (floor > LAST_FLOOR) {
+    const cycle = FLOOR_PLAN.length;
+    const back = floor - LAST_FLOOR - 1;
+    const base = FLOOR_PLAN[back % cycle];
+    const loop = Math.min(ECHO_NAMES.length - 1, Math.floor(back / cycle));
+    return { ...base, floor, name: base.name + ' ' + ECHO_NAMES[loop] };
+  }
   return FLOOR_PLAN[Math.min(LAST_FLOOR, Math.max(1, floor)) - 1];
 }
 
@@ -52,7 +61,7 @@ export function actOf(floor) {
 }
 
 export function floorTitle(floor) {
-  return `FLOOR ${floor} / ${LAST_FLOOR}`;
+  return floor > LAST_FLOOR ? `FLOOR ${floor} · THE ENDLESS COMB` : `FLOOR ${floor} / ${LAST_FLOOR}`;
 }
 
 export function floorName(floor) {

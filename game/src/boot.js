@@ -70,7 +70,7 @@ function paint() {
 function announceState() {
   if (!announce) return;
   if (state.scene === 'title') {
-    announce.textContent = `HIVE LEDGER. Best floor ${state.bestFloor} of 8. Press 1 to 4 to pick a difficulty, then click to begin.`;
+    announce.textContent = `HIVE LEDGER. Best floor ${state.bestFloor} of 8. Press 1 to 4 for difficulty, E to arm the endless comb, then click to begin.`;
     return;
   }
   if (state.scene === 'reward') {

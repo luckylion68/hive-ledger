@@ -1,7 +1,7 @@
 // The shape of a run between the fights. After every floor the keeper picks what to do before the
 // next one: press on light, take the elite raid for a relic, or spend a stop at the market, the camp
 // or an omen. The fights themselves stay in battle.js; this file only decides what is on offer.
-import { isBossFloor } from './floors.js';
+import { isBossFloor, floorConfig } from './floors.js';
 import { ascensionOf } from './ascension.js';
 
 export const NODE_KINDS = {
@@ -95,5 +95,9 @@ export const BOSS_NAMES = {
 };
 
 export function bossNameOf(floor) {
+  if (floor > 8) {
+    const cfg = floorConfig(floor);
+    return cfg && cfg.boss ? cfg.name : '';
+  }
   return BOSS_NAMES[floor] || '';
 }

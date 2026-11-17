@@ -52,7 +52,7 @@ function backdrop(ctx) {
 function titleBlock(ctx) {
   paintText(
     ctx,
-    `A DECKBUILDING CLIMB  ·  ${ACTS.length} ACTS  ·  ${LAST_FLOOR} FLOORS  ·  ${ASCENSIONS.length} SITTINGS`,
+    `A DECKBUILDING CLIMB  ·  ${ACTS.length} ACTS  ·  ${LAST_FLOOR} FLOORS  ·  ${ASCENSIONS.length} SITTINGS  ·  THE ENDLESS COMB`,
     640,
     46,
     { align: 'center', size: 13, weight: 700, color: 'rgba(201, 168, 106, 0.78)', spacing: 3 },

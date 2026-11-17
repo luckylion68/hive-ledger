@@ -54,6 +54,42 @@ export const RELICS = [
     glyph: 'stone',
     text: 'Gain +1 nectar max and heal 4 swarm.',
   },
+  {
+    id: 'comb-cistern',
+    name: 'COMB CISTERN',
+    glyph: 'ladle',
+    text: 'Every fight starts with 6 nectar.',
+  },
+  {
+    id: 'night-pollen',
+    name: 'NIGHT POLLEN',
+    glyph: 'scent',
+    text: 'Every fight starts with 2 bees in the air.',
+  },
+  {
+    id: 'wax-echo',
+    name: 'WAX ECHO',
+    glyph: 'spoon',
+    text: 'Every turn starts with 4 wax.',
+  },
+  {
+    id: 'nectar-veil',
+    name: 'NECTAR VEIL',
+    glyph: 'wing',
+    text: 'Heal 2 swarm at the end of every turn.',
+  },
+  {
+    id: 'long-wick',
+    name: 'LONG WICK',
+    glyph: 'lens',
+    text: 'Gain 2 wax at the end of every turn.',
+  },
+  {
+    id: 'forager-drum',
+    name: 'FORAGER DRUM',
+    glyph: 'horn',
+    text: 'Your first GATHER card each fight gives +2 nectar.',
+  },
 ];
 
 export const RELICS_BY_ID = RELICS.reduce((map, relic) => {
@@ -88,9 +124,11 @@ export function relicDamageBonus(suit) {
 }
 
 export function relicOnCombatStart() {
-  state.relicFlags = { gather: false, turnEnd: false };
+  state.relicFlags = { gather: false, drum: false, turnEnd: false };
   if (hasRelic('wax-ladle')) gainWax(8);
   if (hasRelic('queen-scent')) spawnBees(1);
+  if (hasRelic('comb-cistern')) gainNectar(6);
+  if (hasRelic('night-pollen')) spawnBees(2);
   if (hasRelic('drone-horn')) {
     state.beePower += 2;
     boostBees(0);
@@ -101,6 +139,7 @@ export function relicOnTurnStart() {
   state.relicFlags = state.relicFlags || { gather: false, turnEnd: false };
   state.relicFlags.gather = false;
   if (hasRelic('iron-comb')) gainWax(8);
+  if (hasRelic('wax-echo')) gainWax(4);
 }
 
 export function relicOnCardPlayed(card) {
@@ -109,12 +148,18 @@ export function relicOnCardPlayed(card) {
     state.relicFlags.gather = true;
     gainNectar(1, true);
   }
+  if (card.suit === 'gather' && hasRelic('forager-drum') && !state.relicFlags.drum) {
+    state.relicFlags.drum = true;
+    gainNectar(2, true);
+  }
 }
 
 export function relicOnTurnEnd() {
   if (hasRelic('broken-wing')) {
     state.swarm = Math.max(1, state.swarm - 1);
   }
+  if (hasRelic('nectar-veil')) healSwarm(2);
+  if (hasRelic('long-wick')) gainWax(2);
 }
 
 export function relicIds() {

@@ -31,6 +31,7 @@ export const state = {
   rewardChoices: [],
   rewardSource: '#000000',
   outcome: null,
+  endless: false,
   stats: {
     nectarGathered: 0,
     cardsPlayed: 0,

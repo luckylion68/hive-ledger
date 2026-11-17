@@ -6,7 +6,7 @@ import { startBattle, startRun } from './battle.js';
 import { addCardToDeck } from './deck.js';
 import { CARDS_BY_ID } from './cards.js';
 import { RELICS, grantRelic, hasRelic } from './relics.js';
-import { floorPaysRelic, floorPaysCard, isLastFloor, floorTitle, isBossFloor } from './floors.js';
+import { floorPaysRelic, floorPaysCard, isLastFloor, floorTitle, isBossFloor, LAST_FLOOR } from './floors.js';
 import { playSound } from './audio.js';
 import { healSwarm } from './hive.js';
 import { ascensionOf } from './ascension.js';
@@ -65,7 +65,7 @@ export function onFloorCleared() {
     bumpStat('elitesFelled', 1);
     state.nextFloorElite = false;
   }
-  if (isLastFloor(state.floor)) {
+  if (isLastFloor(state.floor) && !state.endless) {
     state.outcome = 'win';
     state.scene = 'end';
     state.phase = 'over';
@@ -133,6 +133,7 @@ export function choosePath(index) {
   state.coins += node.coins || 0;
   playSound('click');
   const next = state.floor + 1;
+  if (next > LAST_FLOOR) state.ascension = Math.min(3, Math.max(state.ascension, Math.ceil((next - LAST_FLOOR) / 3)));
   if (node.kind === 'battle') {
     startBattle(next, { elite: node.id === 'raid' });
     return true;
@@ -166,6 +167,7 @@ export function choosePath(index) {
 /** Out of a side room and into the next floor's fight. */
 export function leaveNode() {
   const next = state.floor + 1;
+  if (next > LAST_FLOOR) state.ascension = Math.min(3, Math.max(state.ascension, Math.ceil((next - LAST_FLOOR) / 3)));
   startBattle(next, {});
   playSound('start');
 }

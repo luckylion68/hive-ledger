@@ -37,6 +37,9 @@ export const CARDS = [
   { id: 'pierce', name: 'PIERCE', suit: 'sting', cost: 1, rarity: 'rare', art: 'sting', text: ['Deal 5 damage.', 'Ignores wax.'], fx: 'pierce' },
   { id: 'fury', name: 'FURY', suit: 'sting', cost: 3, rarity: 'epic', art: 'fury', text: ['Deal 9 damage', 'to ALL foes.'], fx: 'fury' },
   { id: 'last-sting', name: 'LAST STING', suit: 'sting', cost: 2, rarity: 'rare', art: 'fury', text: ['Deal 8 damage.', 'Double if hive is low.'], fx: 'lastSting' },
+  { id: 'twin-sting', name: 'TWIN STING', suit: 'sting', cost: 2, rarity: 'epic', art: 'sting', text: ['Deal 6 damage twice.'], fx: 'twinSting' },
+  { id: 'wax-fountain', name: 'WAX FOUNTAIN', suit: 'build', cost: 2, rarity: 'epic', art: 'comb', text: ['Gain 12 wax.'], fx: 'waxFountain' },
+  { id: 'summoning-cry', name: 'SUMMONING CRY', suit: 'hatch', cost: 3, rarity: 'epic', art: 'burst', text: ['Summon 3 bees.'], fx: 'summoningCry' },
 ];
 
 export const CARDS_BY_ID = CARDS.reduce((map, card) => {

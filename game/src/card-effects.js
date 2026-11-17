@@ -162,6 +162,17 @@ const EFFECTS = {
     const base = stingDamage(8);
     hitEnemy(currentTarget(), hiveIsLow() ? base * 2 : base);
   },
+  twinSting() {
+    const dmg = stingDamage(6);
+    hitEnemy(currentTarget(), dmg);
+    hitEnemy(currentTarget(), dmg);
+  },
+  waxFountain() {
+    gainWax(v(12));
+  },
+  summoningCry() {
+    spawnBees(v(3));
+  },
 };
 
 export function applyEffect(card) {

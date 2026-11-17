@@ -4,9 +4,15 @@
 [![rank](https://make.fun/badge/best-game-01/luckylion68/hive-ledger/rank.svg)](https://make.fun/bounty/best-game-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=best-game-01)
 [![reward](https://make.fun/badge/best-game-01/luckylion68/hive-ledger/reward.svg)](https://make.fun/bounty/best-game-01?utm_source=github&utm_medium=readme&utm_campaign=best-game-01)
 
-A deckbuilding defense of the last comb. You are the hive's bookkeeper: raiders come for the honey
-every night, and you answer them with instruction cards. Hold eight floors; the eighth is the
-Bumble Queen, and she changes her intent twice before she falls.
+A deckbuilding climb through the last comb. You are the hive's bookkeeper: raiders come for the
+honey every night, and you answer them with instruction cards. Hold eight floors across three acts;
+the eighth is the Bumble Queen, and she changes her intent twice before she falls. Beyond her the
+comb keeps going: the endless comb loops every floor with the swarm growing nastier every three.
+
+- 30 cards in six suits, temperable at camp
+- 14 relics, 8 omens, 3 keepers, 8 enemy kinds
+- 4 sittings (difficulty tiers) + the endless comb
+- every run seeds fresh, every door is a real choice
 
 Entered in make.fun's [Make the best game](https://make.fun/bounty/best-game-01) bounty.
 

@@ -262,6 +262,10 @@ function key(event) {
     return;
   }
   if (state.scene === 'title') {
+    if (tag === 'e' || tag === 'E') {
+      state.endless = !state.endless;
+      return;
+    }
     const sitting = Number(tag);
     if (Number.isInteger(sitting) && sitting >= 1 && sitting <= 4) {
       state.ascension = sitting - 1;
